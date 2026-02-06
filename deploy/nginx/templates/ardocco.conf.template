@@ -13,8 +13,9 @@ server {
 }
 
 server {
-  listen 443 ssl http2;
-  listen [::]:443 ssl http2;
+  listen 443 ssl;
+  listen [::]:443 ssl;
+  http2 on;
   server_name ${FRONTEND_DOMAIN};
 
   ssl_certificate /etc/letsencrypt/live/${LETSENCRYPT_PRIMARY_DOMAIN}/fullchain.pem;
@@ -27,7 +28,9 @@ server {
   add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
 
   location / {
-    proxy_pass http://frontend:3000;
+    resolver 127.0.0.11 valid=30s ipv6=off;
+    set $upstream_frontend frontend:3000;
+    proxy_pass http://$upstream_frontend;
     proxy_http_version 1.1;
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
@@ -39,8 +42,9 @@ server {
 }
 
 server {
-  listen 443 ssl http2;
-  listen [::]:443 ssl http2;
+  listen 443 ssl;
+  listen [::]:443 ssl;
+  http2 on;
   server_name ${API_DOMAIN};
 
   ssl_certificate /etc/letsencrypt/live/${LETSENCRYPT_PRIMARY_DOMAIN}/fullchain.pem;
@@ -53,7 +57,9 @@ server {
   add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
 
   location / {
-    proxy_pass http://backend:8000;
+    resolver 127.0.0.11 valid=30s ipv6=off;
+    set $upstream_backend backend:8000;
+    proxy_pass http://$upstream_backend;
     proxy_http_version 1.1;
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
@@ -65,8 +71,9 @@ server {
 }
 
 server {
-  listen 443 ssl http2;
-  listen [::]:443 ssl http2;
+  listen 443 ssl;
+  listen [::]:443 ssl;
+  http2 on;
   server_name ${AI_DOMAIN};
 
   ssl_certificate /etc/letsencrypt/live/${LETSENCRYPT_PRIMARY_DOMAIN}/fullchain.pem;
@@ -79,7 +86,9 @@ server {
   add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
 
   location / {
-    proxy_pass http://ai:${AI_PORT};
+    resolver 127.0.0.11 valid=30s ipv6=off;
+    set $upstream_ai ai:${AI_PORT};
+    proxy_pass http://$upstream_ai;
     proxy_http_version 1.1;
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
@@ -89,4 +98,3 @@ server {
     proxy_set_header Connection $connection_upgrade;
   }
 }
-
