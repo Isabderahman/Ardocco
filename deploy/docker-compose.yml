@@ -39,9 +39,11 @@ services:
       DB_USERNAME: ${MYSQL_USER}
       DB_PASSWORD: ${MYSQL_PASSWORD}
 
-      SESSION_DRIVER: database
-      CACHE_STORE: database
-      QUEUE_CONNECTION: database
+      # Use file/sync defaults to avoid requiring extra DB tables (sessions/cache/jobs)
+      # You can switch these to redis/database later once migrations are in place.
+      SESSION_DRIVER: file
+      CACHE_STORE: file
+      QUEUE_CONNECTION: sync
 
       TRUSTED_PROXIES: "*"
     volumes:
