@@ -1,0 +1,56 @@
+@import "tailwindcss";
+@import "@nuxt/ui";
+
+@theme static {
+  --font-sans: 'Public Sans', sans-serif;
+  --ui-header-height: 5rem;
+
+  /* Brand (Ardocco navy, from `UI/Ardocco.fig` logo) */
+  --color-brand-50: #f4f6fb;
+  --color-brand-100: #e5ebf6;
+  --color-brand-200: #c6d3eb;
+  --color-brand-300: #a1b6de;
+  --color-brand-400: #7b99d0;
+  --color-brand-500: #2e497b;
+  --color-brand-600: #273e68;
+  --color-brand-700: #1f3052;
+  --color-brand-800: #18253f;
+  --color-brand-900: #121d30;
+  --color-brand-950: #0c1421;
+}
+
+.leaflet-control-attribution {
+  display: none;
+}
+
+/* Leaflet controls (brand styling) */
+.leaflet-bar {
+  border: 0 !important;
+  border-radius: 14px !important;
+  overflow: hidden;
+  box-shadow: 0 14px 30px rgba(2, 6, 23, 0.22);
+}
+
+.leaflet-bar a {
+  width: 42px;
+  height: 42px;
+  line-height: 40px;
+  border: 1px solid color-mix(in srgb, var(--ui-color-primary-500) 24%, transparent);
+  background: color-mix(in srgb, var(--ui-color-primary-500) 8%, white);
+  color: var(--ui-color-primary-700);
+  font-weight: 800;
+  text-decoration: none;
+  transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+
+.leaflet-bar a:hover {
+  background: var(--ui-color-primary-500);
+  color: rgba(255, 255, 255, 0.98);
+  border-color: color-mix(in srgb, var(--ui-color-primary-500) 60%, transparent);
+}
+
+.leaflet-bar a.leaflet-disabled {
+  background: rgba(255, 255, 255, 0.65);
+  color: rgba(100, 116, 139, 0.8);
+  border-color: rgba(148, 163, 184, 0.35);
+}

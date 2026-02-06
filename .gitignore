@@ -1,0 +1,19 @@
+.DS_Store
+.idea
+.vscode
+
+# Deploy secrets / certs
+deploy/.env
+deploy/certbot/
+
+# Backend
+backEnd/.env
+backEnd/vendor/
+backEnd/node_modules/
+backEnd/storage/
+
+# Frontend
+frontEnd/node_modules/
+frontEnd/.nuxt/
+frontEnd/.output/
+

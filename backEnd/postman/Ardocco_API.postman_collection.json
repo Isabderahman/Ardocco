@@ -1,0 +1,305 @@
+{
+  "info": {
+    "name": "Ardocco API (Sanctum + Listings Workflow)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8000" },
+    { "key": "vendeurEmail", "value": "vendeur1@ardocco.test" },
+    { "key": "vendeurPassword", "value": "password" },
+    { "key": "agentEmail", "value": "agent1@ardocco.test" },
+    { "key": "agentPassword", "value": "password" },
+    { "key": "vendeurToken", "value": "" },
+    { "key": "agentToken", "value": "" },
+    { "key": "communeId", "value": "" },
+    { "key": "listingId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "00 - Setup",
+      "item": [
+        {
+          "name": "Ping",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/ping"
+          }
+        },
+        {
+          "name": "Geo - Get CommuneId (CAS)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const list = json && json.data && json.data.all ? json.data.all : [];",
+                  "if (Array.isArray(list) && list.length > 0) {",
+                  "  pm.collectionVariables.set('communeId', list[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/geo/communes/CAS"
+          }
+        }
+      ]
+    },
+    {
+      "name": "01 - Auth",
+      "item": [
+        {
+          "name": "Login (vendeur)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json && json.token) {",
+                  "  pm.collectionVariables.set('vendeurToken', json.token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{vendeurEmail}}\",\n  \"password\": \"{{vendeurPassword}}\",\n  \"device_name\": \"postman\"\n}\n"
+            },
+            "url": "{{baseUrl}}/api/auth/login"
+          }
+        },
+        {
+          "name": "Login (agent)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json && json.token) {",
+                  "  pm.collectionVariables.set('agentToken', json.token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{agentEmail}}\",\n  \"password\": \"{{agentPassword}}\",\n  \"device_name\": \"postman\"\n}\n"
+            },
+            "url": "{{baseUrl}}/api/auth/login"
+          }
+        },
+        {
+          "name": "Me (vendeur)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{vendeurToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/auth/me"
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Vendeur - Listings",
+      "item": [
+        {
+          "name": "Create Listing (brouillon)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json && json.data && json.data.id) {",
+                  "  pm.collectionVariables.set('listingId', json.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{vendeurToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Terrain test - workflow\",\n  \"description\": \"Annonce créée via Postman\",\n  \"commune_id\": \"{{communeId}}\",\n  \"quartier\": \"Centre\",\n  \"address\": \"Adresse de test\",\n  \"superficie\": 500,\n  \"prix_demande\": 5000000,\n  \"type_terrain\": \"residentiel\",\n  \"visibility\": \"public\",\n  \"is_exclusive\": true,\n  \"is_urgent\": false\n}\n"
+            },
+            "url": "{{baseUrl}}/api/listings"
+          }
+        },
+        {
+          "name": "Upsert Fiche Technique",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{vendeurToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accessibilite\": {\"route\": \"bonne\", \"transport\": \"proche\"},\n  \"voisinage\": {\"environnement\": \"résidentiel\"},\n  \"contraintes_techniques\": {\"contraintes\": []},\n  \"opportunites\": {\"points_forts\": [\"emplacement\", \"potentiel\"]},\n  \"equipements\": {\"eau\": true, \"electricite\": true},\n  \"photos_analyse\": []\n}\n"
+            },
+            "url": "{{baseUrl}}/api/listings/{{listingId}}/fiches/technique"
+          }
+        },
+        {
+          "name": "Upsert Fiche Financiere",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{vendeurToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"prix_marche_estime\": 5200000,\n  \"comparables\": [],\n  \"hypotheses_valorisation\": {\"scenario\": \"standard\"},\n  \"couts_viabilisation\": 250000,\n  \"couts_amenagement\": 150000,\n  \"taxes_estimees\": {\"tva\": null},\n  \"rentabilite_potentielle\": {\"roi_estime\": 0.12}\n}\n"
+            },
+            "url": "{{baseUrl}}/api/listings/{{listingId}}/fiches/financiere"
+          }
+        },
+        {
+          "name": "Upsert Fiche Juridique",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{vendeurToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"statut_foncier\": \"titre_foncier\",\n  \"numero_titre\": \"TF-POSTMAN-001\",\n  \"proprietaire_legal\": \"Vendeur Test\",\n  \"servitudes\": [],\n  \"restrictions\": [],\n  \"litiges\": [],\n  \"documents_manquants\": [],\n  \"points_vigilance\": [],\n  \"conformite_urbanisme\": true\n}\n"
+            },
+            "url": "{{baseUrl}}/api/listings/{{listingId}}/fiches/juridique"
+          }
+        },
+        {
+          "name": "Submit Listing (soumis)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{vendeurToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/listings/{{listingId}}/submit"
+          }
+        },
+        {
+          "name": "Show Listing",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{vendeurToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/listings/{{listingId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - Agent - Review",
+      "item": [
+        {
+          "name": "List Pending (soumis)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{agentToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/agent/listings?status=soumis"
+          }
+        },
+        {
+          "name": "Request Revision (en_revision)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{agentToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"Merci de compléter/ajuster certaines informations avant validation.\"\n}\n"
+            },
+            "url": "{{baseUrl}}/api/agent/listings/{{listingId}}/request-revision"
+          }
+        },
+        {
+          "name": "Approve (valide)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{agentToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/agent/listings/{{listingId}}/approve"
+          }
+        },
+        {
+          "name": "Publish (publie)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{agentToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/agent/listings/{{listingId}}/publish"
+          }
+        },
+        {
+          "name": "Reject (refuse)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{agentToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Annonce refusée (exemple).\"\n}\n"
+            },
+            "url": "{{baseUrl}}/api/agent/listings/{{listingId}}/reject"
+          }
+        }
+      ]
+    }
+  ]
+}
+

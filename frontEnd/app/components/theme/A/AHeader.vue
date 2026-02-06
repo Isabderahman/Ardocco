@@ -1,0 +1,123 @@
+<template>
+  <UHeader
+    v-model:open="open"
+    :toggle="{ class: 'lg:hidden' }"
+    :ui="{
+      root: 'sticky top-0 z-50 border-b border-default bg-default/80 backdrop-blur',
+      container: 'max-w-none'
+    }"
+  >
+    <template #left>
+      <NuxtLink
+        to="/"
+        class="flex items-center"
+      >
+        <AppLogo
+          variant="full"
+          class="h-9 w-auto"
+        />
+      </NuxtLink>
+    </template>
+
+    <template #default>
+      <UNavigationMenu
+        :items="navItems"
+        orientation="horizontal"
+        variant="link"
+        :ui="{
+          link: 'text-base font-bold',
+          item: 'py-3'
+        }"
+      />
+    </template>
+
+    <template #right>
+      <div class="hidden items-center gap-2 lg:flex">
+        <UButton
+          icon="i-lucide-phone"
+          label="+212 123456789"
+          color="neutral"
+          variant="ghost"
+          to="tel:+212123456789"
+          size="lg"
+        />
+
+        <!-- <UDropdownMenu
+          :items="pagesItems"
+          :content="{ align: 'end' }"
+          :ui="{ content: 'min-w-56' }"
+        >
+          <UButton
+            label="Pages"
+            color="neutral"
+            variant="ghost"
+            trailing-icon="i-lucide-chevron-down"
+          />
+        </UDropdownMenu> -->
+      </div>
+
+      <UButton
+        label="Add Terrain"
+        color="primary"
+        size="lg"
+        to="/terrains/new"
+        class="rounded-full font-bold"
+      />
+    </template>
+
+    <template #content>
+      <div class="py-4">
+        <UNavigationMenu
+          :items="navItems"
+          orientation="vertical"
+          variant="pill"
+          :ui="{
+            link: 'text-base font-bold'
+          }"
+        />
+
+        <div class="mt-4 border-t border-default pt-4">
+          <UNavigationMenu
+            :items="pagesItems"
+            orientation="vertical"
+            variant="pill"
+            :ui="{
+              link: 'text-base font-bold'
+            }"
+          />
+        </div>
+      </div>
+    </template>
+  </UHeader>
+</template>
+
+<script setup lang="ts">
+import type { NavItem } from '~/types/models/navigation'
+
+const open = ref(false)
+const { isAuthenticated } = useAuth()
+
+const navItems: NavItem[] = [
+  { label: 'Home', to: '/' },
+  { label: 'About', to: '/about' },
+  { label: 'Buy', to: '/buy' },
+  { label: 'Blog', to: '/blog' },
+  { label: 'Contact', to: '/contact' }
+]
+
+const pagesItems = computed<NavItem[]>(() => {
+  const items: NavItem[] = [
+    { label: 'Sell', to: '/sell', icon: 'i-lucide-store' },
+    { label: 'Dashboard', to: '/dashboard', icon: 'i-lucide-layout-dashboard' },
+    { label: 'Add Terrain', to: '/terrains/new', icon: 'i-lucide-plus-square' }
+  ]
+
+  if (isAuthenticated.value) {
+    items.push({ label: 'Logout', to: '/logout', icon: 'i-lucide-log-out' })
+  } else {
+    items.push({ label: 'Login', to: '/login', icon: 'i-lucide-log-in' })
+  }
+
+  return items
+})
+</script>
