@@ -7,7 +7,8 @@ export default defineNuxtPlugin(() => {
     // If @nuxtjs/color-mode isn't available for any reason, fall back to DOM/localStorage.
   }
 
-  localStorage.setItem('nuxt-color-mode', 'light')
+  localStorage.setItem('ardocco-color-mode', 'light')
+  localStorage.removeItem('nuxt-color-mode')
 
   const root = document.documentElement
   root.classList.remove('dark')

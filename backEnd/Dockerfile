@@ -8,7 +8,7 @@ RUN composer install --no-dev --prefer-dist --no-interaction --no-scripts --opti
 COPY . .
 RUN composer dump-autoload --optimize
 
-FROM php:8.2-cli-alpine AS runtime
+FROM php:8.4-cli-alpine AS runtime
 
 WORKDIR /var/www/html
 
@@ -30,4 +30,3 @@ EXPOSE 8000
 
 ENTRYPOINT ["entrypoint"]
 CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
-

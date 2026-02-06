@@ -17,6 +17,24 @@ export default defineNuxtConfig({
         { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: 'anonymous' },
         { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700;800&display=swap' }
+      ],
+      script: [
+        {
+          innerHTML: `
+            (function () {
+              try {
+                localStorage.setItem('ardocco-color-mode', 'light');
+                localStorage.removeItem('nuxt-color-mode');
+              } catch (e) {}
+
+              var root = document.documentElement;
+              root.classList.remove('dark');
+              root.classList.add('light');
+              root.style.colorScheme = 'light';
+            })();
+          `,
+          tagPosition: 'head'
+        }
       ]
     }
   },
@@ -25,7 +43,8 @@ export default defineNuxtConfig({
 
   colorMode: {
     preference: 'light',
-    fallback: 'light'
+    fallback: 'light',
+    storageKey: 'ardocco-color-mode'
   },
 
   ui: {
