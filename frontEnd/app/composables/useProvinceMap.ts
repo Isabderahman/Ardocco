@@ -35,12 +35,12 @@ export function useProvinceMap(provinces: ProvinceConfig[] = []) {
       const province = await provinceService.getProvinceByCode(provinceCode, apiBaseUrl)
 
       if (!province) {
-        console.warn(`No boundary data found for province: ${provinceCode}`)
+        if (import.meta.dev) console.warn(`No boundary data found for province: ${provinceCode}`)
         return null
       }
 
       if (!province.geometry) {
-        console.warn(`Province ${provinceCode} has no geometry data`)
+        if (import.meta.dev) console.warn(`Province ${provinceCode} has no geometry data`)
         return null
       }
 
@@ -145,12 +145,12 @@ export function useProvinceMap(provinces: ProvinceConfig[] = []) {
 
         const province = provinceByCode.get(provinceCode)
         if (!province) {
-          console.warn(`No boundary data found for province: ${provinceCode}`)
+          if (import.meta.dev) console.warn(`No boundary data found for province: ${provinceCode}`)
           continue
         }
 
         if (!province.geometry) {
-          console.warn(`Province ${provinceCode} has no geometry data`)
+          if (import.meta.dev) console.warn(`Province ${provinceCode} has no geometry data`)
           continue
         }
 
