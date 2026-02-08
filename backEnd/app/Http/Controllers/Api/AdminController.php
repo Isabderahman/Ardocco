@@ -172,7 +172,7 @@ class AdminController extends Controller
                 'type' => 'listing_deleted',
                 'title' => 'Annonce supprimée',
                 'message' => "Votre annonce {$listing->reference} a été supprimée par un administrateur.",
-                'link' => '/sell',
+                'link' => '/dashboard',
             ]);
         }
 

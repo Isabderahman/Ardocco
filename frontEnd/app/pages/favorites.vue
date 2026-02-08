@@ -4,7 +4,8 @@ import type { FavoritesTableRow } from '~/types/models/favorites'
 
 definePageMeta({
   layout: 'dashboard',
-  title: 'My favorites'
+  title: 'My favorites',
+  middleware: 'auth'
 })
 
 const data: FavoritesTableRow[] = [

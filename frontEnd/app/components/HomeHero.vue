@@ -25,7 +25,7 @@ async function onSearch() {
   searching.value = true
   try {
     const q = query.value.trim()
-    await navigateTo({ path: '/sell', query: q ? { q } : {} })
+    await navigateTo({ path: '/terrains', query: q ? { q } : {} })
   } finally {
     searching.value = false
   }

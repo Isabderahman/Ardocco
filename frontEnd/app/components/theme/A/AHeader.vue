@@ -42,6 +42,34 @@
           size="lg"
         />
 
+        <UButton
+          v-if="isAuthenticated"
+          label="Dashboard"
+          icon="i-lucide-layout-dashboard"
+          color="neutral"
+          variant="outline"
+          to="/dashboard"
+          size="lg"
+        />
+
+        <UButton
+          v-if="!isAuthenticated"
+          label="Login"
+          color="neutral"
+          variant="outline"
+          to="/login"
+          size="lg"
+        />
+
+        <UButton
+          v-else
+          label="Logout"
+          color="neutral"
+          variant="outline"
+          to="/logout"
+          size="lg"
+        />
+
         <!-- <UDropdownMenu
           :items="pagesItems"
           :content="{ align: 'end' }"
@@ -57,6 +85,7 @@
       </div>
 
       <UButton
+        v-if="canCreateListing"
         label="Add Terrain"
         color="primary"
         size="lg"
@@ -95,7 +124,13 @@
 import type { NavItem } from '~/types/models/navigation'
 
 const open = ref(false)
-const { isAuthenticated } = useAuth()
+const { isAuthenticated, ensureUserLoaded } = useAuth()
+const { canCreateListing, canAccessAdmin, hasRole } = useAccess()
+
+onMounted(() => {
+  if (!isAuthenticated.value) return
+  ensureUserLoaded().catch(() => {})
+})
 
 const navItems: NavItem[] = [
   { label: 'Home', to: '/' },
@@ -106,11 +141,14 @@ const navItems: NavItem[] = [
 ]
 
 const pagesItems = computed<NavItem[]>(() => {
-  const items: NavItem[] = [
-    { label: 'Sell', to: '/sell', icon: 'i-lucide-store' },
-    { label: 'Dashboard', to: '/dashboard', icon: 'i-lucide-layout-dashboard' },
-    { label: 'Add Terrain', to: '/terrains/new', icon: 'i-lucide-plus-square' }
-  ]
+  const items: NavItem[] = []
+
+  if (isAuthenticated.value) {
+    items.push({ label: 'Dashboard', to: '/dashboard', icon: 'i-lucide-layout-dashboard' })
+    if (canCreateListing.value) items.push({ label: 'Add Terrain', to: '/terrains/new', icon: 'i-lucide-plus-square' })
+    if (canAccessAdmin.value) items.push({ label: 'Admin', to: '/admin', icon: 'i-lucide-shield' })
+    if (hasRole('expert', 'admin')) items.push({ label: 'Expert', to: '/expert', icon: 'i-lucide-award' })
+  }
 
   if (isAuthenticated.value) {
     items.push({ label: 'Logout', to: '/logout', icon: 'i-lucide-log-out' })

@@ -101,7 +101,7 @@ class ExpertController extends Controller
                 'type' => 'expertise_validated',
                 'title' => 'Expertise technique validée',
                 'message' => "L'expertise technique de votre terrain {$listing->reference} a été validée.",
-                'link' => "/sell/{$listing->id}",
+                'link' => "/terrains/{$listing->id}",
             ]);
         }
 
@@ -160,7 +160,7 @@ class ExpertController extends Controller
                 'type' => 'expertise_validated',
                 'title' => 'Expertise financière validée',
                 'message' => "L'expertise financière de votre terrain {$listing->reference} a été validée.",
-                'link' => "/sell/{$listing->id}",
+                'link' => "/terrains/{$listing->id}",
             ]);
         }
 
@@ -207,7 +207,7 @@ class ExpertController extends Controller
                 'type' => 'expertise_validated',
                 'title' => 'Expertise juridique validée',
                 'message' => "L'expertise juridique de votre terrain {$listing->reference} a été validée.",
-                'link' => "/sell/{$listing->id}",
+                'link' => "/terrains/{$listing->id}",
             ]);
         }
 

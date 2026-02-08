@@ -18,6 +18,12 @@ class DatabaseSeeder extends Seeder
             CasablancaSettatGeoSeeder::class,
         ]);
 
+        if ((bool) env('SEED_EXAMPLE_LISTINGS', false)) {
+            $this->call([
+                ExampleListingsSeeder::class,
+            ]);
+        }
+
         if (app()->environment(['local', 'testing'])) {
             $this->call([
                 TestUsersSeeder::class,

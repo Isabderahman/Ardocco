@@ -65,7 +65,7 @@ Route::get('/public/listings/{listing}', [PublicListingController::class, 'show'
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/listings', [ListingController::class, 'index'])->name('listings.index');
-    Route::post('/listings', [ListingController::class, 'store'])->middleware('role:vendeur')->name('listings.store');
+    Route::post('/listings', [ListingController::class, 'store'])->middleware('role:vendeur,agent,admin')->name('listings.store');
     Route::get('/listings/{listing}', [ListingController::class, 'show'])->name('listings.show');
     Route::match(['put', 'patch'], '/listings/{listing}', [ListingController::class, 'update'])->name('listings.update');
     Route::put('/listings/{listing}/fiches/technique', [ListingController::class, 'upsertFicheTechnique'])->name('listings.fiches.technique');

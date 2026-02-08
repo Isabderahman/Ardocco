@@ -9,6 +9,42 @@ import type { GeoJSONFeature, ProvinceApiModel } from '~/types/models/province'
 // Default to Nuxt server proxy routes under `/api/backend` (see `server/api/backend/*`)
 const DEFAULT_API_URL = '/api/backend'
 
+function normalizeApiBaseUrl(apiBaseUrl: string): string {
+  const normalized = String(apiBaseUrl || '').trim().replace(/\/+$/, '')
+  if (!normalized) return DEFAULT_API_URL
+
+  // If the caller is using Nuxt server proxy routes, keep the proxy prefix as-is.
+  if (normalized === DEFAULT_API_URL || normalized.endsWith(DEFAULT_API_URL)) return normalized
+
+  // If the caller provided a host without a scheme (ex: "api.ardocco.com"), make it absolute.
+  // Keep relative URLs (starting with "/") unchanged.
+  let base = normalized
+  if (!base.startsWith('/') && !/^https?:\/\//.test(base)) {
+    const hostPort = base.split('/')[0] || base
+    const portMatch = hostPort.match(/:(\d+)$/)
+    const port = portMatch ? Number(portMatch[1]) : null
+    const host = hostPort.replace(/:(\d+)$/, '')
+    const isLocal = /^(localhost|127\.|0\.0\.0\.0|::1|backend)\b/.test(host)
+
+    const scheme = isLocal
+      ? 'http'
+      : port === 80
+        ? 'http'
+        : port === 443
+          ? 'https'
+          : port
+            ? 'http'
+            : 'https'
+
+    base = `${scheme}://${base}`
+  }
+
+  // If the caller points directly at the backend host/root, ensure we hit Laravel's `/api/*` routes.
+  if (base.endsWith('/api')) return base
+
+  return `${base}/api`
+}
+
 export const provinceService = {
   /**
    * Get all provinces for a specific region
@@ -21,7 +57,8 @@ export const provinceService = {
     apiBaseUrl: string = DEFAULT_API_URL
   ): Promise<ApiResponse<ProvinceApiModel[]>> {
     try {
-      const response = await fetch(`${apiBaseUrl}/geo/provinces/${encodeURIComponent(regionCode)}`)
+      const baseUrl = normalizeApiBaseUrl(apiBaseUrl)
+      const response = await fetch(`${baseUrl}/geo/provinces/${encodeURIComponent(regionCode)}`)
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
@@ -51,7 +88,8 @@ export const provinceService = {
     apiBaseUrl: string = DEFAULT_API_URL
   ): Promise<ProvinceApiModel | null> {
     try {
-      const response = await fetch(`${apiBaseUrl}/geo/province/${encodeURIComponent(provinceCode)}`)
+      const baseUrl = normalizeApiBaseUrl(apiBaseUrl)
+      const response = await fetch(`${baseUrl}/geo/province/${encodeURIComponent(provinceCode)}`)
 
       if (!response.ok) {
         if (response.status === 404) {

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 definePageMeta({
   layout: 'dashboard',
-  title: 'My package'
+  title: 'My package',
+  middleware: 'auth'
 })
 </script>
 

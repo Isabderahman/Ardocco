@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Commune;
+use App\Models\Document;
 use App\Models\FicheFinanciere;
 use App\Models\FicheJuridique;
 use App\Models\FicheTechnique;
@@ -12,12 +13,21 @@ use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 class ListingController extends Controller
 {
     public function index(Request $request)
     {
         $user = $request->user();
+
+        if (!in_array($user->role, ['admin', 'agent', 'vendeur'], true)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Forbidden.',
+            ], 403);
+        }
 
         $query = Listing::query()
             ->with([
@@ -77,57 +87,195 @@ class ListingController extends Controller
     {
         $user = $request->user();
 
-        if ($user->role !== 'vendeur') {
+        if (!in_array($user->role, ['vendeur', 'agent', 'admin'], true)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Only vendeur can create listings.',
+                'message' => 'Forbidden.',
             ], 403);
         }
 
         $validated = $request->validate([
             'reference' => 'nullable|string|max:50|unique:listings,reference',
             'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
+            'description' => 'required|string|max:5000',
             'commune_id' => 'required|uuid|exists:communes,id',
             'quartier' => 'nullable|string|max:100',
             'address' => 'nullable|string',
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
-            'superficie' => 'required|numeric|min:0.01',
-            'prix_demande' => 'required|numeric|min:0',
+            'geojson_polygon' => 'nullable',
+            'superficie' => 'nullable|numeric|min:0',
+            'superficie_m2' => 'nullable|numeric|min:0',
+            'superficie_unknown' => 'sometimes|boolean',
+            'prix_demande' => 'nullable|numeric|min:0',
+            'price' => 'nullable|numeric|min:0',
+            'price_on_request' => 'sometimes|boolean',
+            'price_per_m2' => 'sometimes|boolean',
+            'negotiable' => 'sometimes|boolean',
+            'phone' => 'required|string|max:20',
+            'whatsapp' => 'nullable|string|max:20',
+            'email' => 'nullable|email|max:255',
+            'owner_attestation' => 'accepted',
+            'titre_foncier' => 'sometimes|boolean',
+            'reference_tf' => 'nullable|string|max:100',
+            'perimetre' => 'nullable|string|in:urbain,rural,periurbain,Urbain,Rural,Périurbain,Periurbain,peri-urbain,periurbain',
+            'zonage' => 'nullable|string|max:100',
+            'photos' => 'nullable|array|max:3',
+            'photos.*' => 'file|mimes:jpg,jpeg,png|max:10240',
+            'plan_situation' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
             'type_terrain' => 'required|in:residentiel,commercial,industriel,agricole,mixte',
             'visibility' => 'nullable|in:public,private,restricted',
             'is_exclusive' => 'sometimes|boolean',
             'is_urgent' => 'sometimes|boolean',
         ]);
 
+        $geojsonPolygon = $validated['geojson_polygon'] ?? null;
+        if (is_string($geojsonPolygon) && trim($geojsonPolygon) !== '') {
+            $decoded = json_decode($geojsonPolygon, true);
+            if (!is_array($decoded)) {
+                throw ValidationException::withMessages([
+                    'geojson_polygon' => ['GeoJSON polygon must be valid JSON.'],
+                ]);
+            }
+            $geojsonPolygon = $decoded;
+        }
+
+        if ($geojsonPolygon !== null) {
+            $type = is_array($geojsonPolygon) ? ($geojsonPolygon['type'] ?? null) : null;
+            $coordinates = is_array($geojsonPolygon) ? ($geojsonPolygon['coordinates'] ?? null) : null;
+
+            if ($type !== 'Polygon' || !is_array($coordinates)) {
+                throw ValidationException::withMessages([
+                    'geojson_polygon' => ['GeoJSON polygon must be an object with type=Polygon and coordinates.'],
+                ]);
+            }
+        }
+
+        $superficieUnknown = (bool) ($validated['superficie_unknown'] ?? false);
+        $superficieValue = $validated['superficie'] ?? $validated['superficie_m2'] ?? null;
+        $superficie = $superficieValue !== null ? (float) $superficieValue : null;
+
+        if (!$superficieUnknown && (!$superficie || $superficie <= 0)) {
+            throw ValidationException::withMessages([
+                'superficie_m2' => ['Superficie is required unless it is unknown.'],
+            ]);
+        }
+
+        $priceOnRequest = (bool) ($validated['price_on_request'] ?? false);
+        $priceValue = $validated['prix_demande'] ?? $validated['price'] ?? null;
+        $prixDemande = $priceValue !== null ? (float) $priceValue : null;
+
+        if (!$priceOnRequest && ($prixDemande === null || $prixDemande <= 0)) {
+            throw ValidationException::withMessages([
+                'price' => ['Price is required unless it is on request.'],
+            ]);
+        }
+
+        $hasTitreFoncier = (bool) ($validated['titre_foncier'] ?? false);
+        $referenceTf = isset($validated['reference_tf']) ? trim((string) $validated['reference_tf']) : '';
+        if ($hasTitreFoncier && $referenceTf === '') {
+            throw ValidationException::withMessages([
+                'reference_tf' => ['Reference TF is required when titre foncier is enabled.'],
+            ]);
+        }
+
+        if (!$hasTitreFoncier && !$request->hasFile('plan_situation')) {
+            throw ValidationException::withMessages([
+                'plan_situation' => ['Plan de situation is required when titre foncier is not available.'],
+            ]);
+        }
+
         $commune = Commune::query()->find($validated['commune_id']);
 
-        $superficie = (float) $validated['superficie'];
-        $prixDemande = (float) $validated['prix_demande'];
-        $prixParM2 = $superficie > 0 ? round($prixDemande / $superficie, 2) : null;
+        $superficieForCalc = $superficieUnknown ? 0.0 : (float) ($superficie ?? 0.0);
+        $prixDemandeForCalc = $priceOnRequest ? 0.0 : (float) ($prixDemande ?? 0.0);
+        $prixParM2 = $superficieForCalc > 0 && $prixDemandeForCalc > 0 ? round($prixDemandeForCalc / $superficieForCalc, 2) : null;
+
+        $perimetre = null;
+        if (array_key_exists('perimetre', $validated) && $validated['perimetre'] !== null) {
+            $rawPerimetre = trim((string) $validated['perimetre']);
+            $rawPerimetre = str_replace(['é', 'É'], 'e', $rawPerimetre);
+            $rawPerimetre = str_replace('-', '', $rawPerimetre);
+            $rawPerimetre = mb_strtolower($rawPerimetre);
+            $perimetre = match ($rawPerimetre) {
+                'urbain' => 'urbain',
+                'rural' => 'rural',
+                'periurbain' => 'periurbain',
+                default => null,
+            };
+        }
 
         $listing = Listing::create([
             'owner_id' => $user->id,
             'agent_id' => null,
+            'contact_phone' => $validated['phone'],
+            'contact_whatsapp' => $validated['whatsapp'] ?? null,
+            'contact_email' => $validated['email'] ?? null,
+            'owner_attestation' => true,
             'reference' => $validated['reference'] ?? null,
             'title' => $validated['title'],
-            'description' => $validated['description'] ?? null,
+            'description' => $validated['description'],
             'commune_id' => $validated['commune_id'],
             'quartier' => $validated['quartier'] ?? null,
             'address' => $validated['address'] ?? null,
             'latitude' => $validated['latitude'] ?? $commune?->latitude,
             'longitude' => $validated['longitude'] ?? $commune?->longitude,
-            'superficie' => $superficie,
-            'prix_demande' => $prixDemande,
+            'geojson_polygon' => $geojsonPolygon,
+            'superficie' => $superficieForCalc,
+            'superficie_unknown' => $superficieUnknown,
+            'prix_demande' => $prixDemandeForCalc,
+            'price_on_request' => $priceOnRequest,
             'prix_par_m2' => $prixParM2,
+            'show_price_per_m2' => (bool) ($validated['price_per_m2'] ?? false),
+            'negotiable' => (bool) ($validated['negotiable'] ?? false),
             'type_terrain' => $validated['type_terrain'],
             'status' => 'brouillon',
+            'titre_foncier' => $hasTitreFoncier ? $referenceTf : null,
             'visibility' => $validated['visibility'] ?? 'public',
+            'zonage' => $validated['zonage'] ?? null,
+            'perimetre' => $perimetre,
             'is_exclusive' => (bool) ($validated['is_exclusive'] ?? false),
             'is_urgent' => (bool) ($validated['is_urgent'] ?? false),
             'views_count' => 0,
         ]);
+
+        Storage::disk('public')->makeDirectory("listings/{$listing->id}/images");
+        Storage::disk('public')->makeDirectory("listings/{$listing->id}/documents");
+
+        if ($request->hasFile('plan_situation')) {
+            $file = $request->file('plan_situation');
+            $path = $file->store("listings/{$listing->id}/documents", 'public');
+
+            Document::create([
+                'listing_id' => $listing->id,
+                'uploaded_by' => $user->id,
+                'document_type' => 'plan_cadastral',
+                'file_name' => $file->getClientOriginalName(),
+                'file_path' => $path,
+                'file_size' => $file->getSize(),
+                'mime_type' => $file->getMimeType(),
+                'is_public' => false,
+                'processing_status' => 'completed',
+            ]);
+        }
+
+        if ($request->hasFile('photos')) {
+            foreach ($request->file('photos') as $file) {
+                $path = $file->store("listings/{$listing->id}/images", 'public');
+
+                Document::create([
+                    'listing_id' => $listing->id,
+                    'uploaded_by' => $user->id,
+                    'document_type' => 'photos',
+                    'file_name' => $file->getClientOriginalName(),
+                    'file_path' => $path,
+                    'file_size' => $file->getSize(),
+                    'mime_type' => $file->getMimeType(),
+                    'is_public' => true,
+                    'processing_status' => 'completed',
+                ]);
+            }
+        }
 
         $listing->load(['commune.province.region', 'owner', 'agent']);
 
@@ -183,6 +331,7 @@ class ListingController extends Controller
             'address' => 'nullable|string',
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
+            'geojson_polygon' => 'nullable|array',
             'superficie' => 'sometimes|required|numeric|min:0.01',
             'prix_demande' => 'sometimes|required|numeric|min:0',
             'prix_estime' => 'nullable|numeric|min:0',

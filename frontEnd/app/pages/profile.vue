@@ -1,7 +1,8 @@
 <script setup lang="ts">
 definePageMeta({
   layout: 'dashboard',
-  title: 'Profile'
+  title: 'Profile',
+  middleware: 'auth'
 })
 
 const state = reactive({

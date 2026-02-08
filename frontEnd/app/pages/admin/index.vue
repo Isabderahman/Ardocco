@@ -1,19 +1,9 @@
 <script setup lang="ts">
 definePageMeta({
   layout: 'dashboard',
-  title: 'Administration'
+  title: 'Administration',
+  middleware: 'admin'
 })
-
-const { token, user } = useAuth()
-
-if (!token.value) {
-  navigateTo('/login')
-}
-
-// Redirect if not admin
-if (user.value?.role !== 'admin') {
-  navigateTo('/dashboard')
-}
 
 const { stats, pendingListings } = useAdminDashboard()
 </script>

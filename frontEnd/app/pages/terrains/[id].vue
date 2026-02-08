@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import type { BackendResponse } from '~/types/models/api'
+import type { BackendListing } from '~/types/models/listing'
+
 definePageMeta({
   title: 'Détails du terrain'
 })
@@ -8,7 +11,57 @@ const { token } = useAuth()
 
 const listingId = computed(() => String(route.params.id || ''))
 
-const { listing, hasFullAccess, pending, error } = usePublicListing(listingId)
+const publicListingQuery = usePublicListing(listingId)
+
+const headers = computed(() => {
+  const value = typeof token.value === 'string' ? token.value.trim() : ''
+  return value ? { Authorization: `Bearer ${value}` } : undefined
+})
+
+const {
+  data: privateResponse,
+  pending: privatePending,
+  error: privateError,
+  execute: fetchPrivate
+} = useFetch<BackendResponse<BackendListing>>(
+  () => `/api/backend/listings/${encodeURIComponent(listingId.value)}`,
+  {
+    immediate: false,
+    watch: false,
+    headers
+  }
+)
+
+watch(listingId, () => {
+  privateResponse.value = undefined
+  privateError.value = undefined
+})
+
+const shouldFetchPrivate = computed(() => {
+  if (!token.value) return false
+  const statusCode = Number((publicListingQuery.error.value as { statusCode?: number } | null)?.statusCode)
+  return statusCode === 404
+})
+
+watch(
+  shouldFetchPrivate,
+  (should) => {
+    if (!should) return
+    if (privatePending.value) return
+    void fetchPrivate()
+  },
+  { immediate: true }
+)
+
+const privateListing = computed<BackendListing | null>(() => privateResponse.value?.data || null)
+
+const listing = computed<BackendListing | null>(() => {
+  return publicListingQuery.listing.value || privateListing.value || null
+})
+
+const hasFullAccess = computed(() => publicListingQuery.hasFullAccess.value || !!privateListing.value)
+const pending = computed(() => publicListingQuery.pending.value || (shouldFetchPrivate.value && privatePending.value))
+const error = computed(() => (listing.value ? null : (privateError.value || publicListingQuery.error.value)))
 
 const {
   open: showContactModal,
@@ -52,6 +105,35 @@ const terrainTypeLabels: Record<string, string> = {
   agricole: 'Agricole',
   mixte: 'Mixte',
 }
+
+function numeric(value: unknown): number | null {
+  const n = Number(value)
+  return Number.isFinite(n) ? n : null
+}
+
+const listingLat = computed(() => numeric(listing.value?.latitude))
+const listingLng = computed(() => numeric(listing.value?.longitude))
+const selectedPolygon = computed(() => listing.value?.geojson_polygon ?? null)
+
+const hasPhotos = computed(() => {
+  const docs = listing.value?.documents
+  if (!Array.isArray(docs)) return false
+  return docs.some(doc => (doc as { document_type?: unknown })?.document_type === 'photos')
+})
+
+const listingMarkers = computed(() => {
+  if (!listing.value) return []
+  const lat = listingLat.value
+  const lng = listingLng.value
+  if (lat == null || lng == null) return []
+
+  return [{
+    id: listing.value.id,
+    lat,
+    lng,
+    title: listing.value.title
+  }]
+})
 </script>
 
 <template>
@@ -110,9 +192,34 @@ const terrainTypeLabels: Record<string, string> = {
         <div class="grid lg:grid-cols-3 gap-8">
           <!-- Left column (main info) -->
           <div class="lg:col-span-2 space-y-6">
-            <!-- Image gallery placeholder -->
-            <div class="aspect-video bg-gray-200 rounded-xl flex items-center justify-center">
-              <UIcon name="i-lucide-image" class="w-16 h-16 text-gray-400" />
+            <!-- Media (photos or fallback map) -->
+            <div class="aspect-video overflow-hidden rounded-xl bg-gray-200">
+              <template v-if="hasPhotos">
+                <div class="flex h-full w-full items-center justify-center">
+                  <UIcon name="i-lucide-image" class="w-16 h-16 text-gray-400" />
+                </div>
+              </template>
+
+              <template v-else-if="selectedPolygon || (listingLat != null && listingLng != null)">
+                <ClientOnly>
+                  <CasablancaSettatMap
+                    height="100%"
+                    :show-legend="false"
+                    :show-controls="false"
+                    :fit-to-region="false"
+                    :markers="listingMarkers"
+                    :fit-to-markers="!selectedPolygon"
+                    :selected-geojson-polygon="selectedPolygon"
+                    :fit-to-selected-geojson-polygon="true"
+                  />
+                </ClientOnly>
+              </template>
+
+              <template v-else>
+                <div class="flex h-full w-full items-center justify-center">
+                  <UIcon name="i-lucide-image" class="w-16 h-16 text-gray-400" />
+                </div>
+              </template>
             </div>
 
             <!-- Key info cards -->
@@ -317,13 +424,19 @@ const terrainTypeLabels: Record<string, string> = {
             </div>
 
             <!-- Map -->
-            <div v-if="listing.latitude && listing.longitude" class="bg-white rounded-xl overflow-hidden shadow-sm">
+            <div v-if="hasPhotos && (selectedPolygon || (listingLat != null && listingLng != null))" class="bg-white rounded-xl overflow-hidden shadow-sm">
               <div class="h-48 bg-gray-200 flex items-center justify-center">
                 <ClientOnly>
                   <CasablancaSettatMap
-                    :center="[listing.latitude, listing.longitude]"
                     :zoom="14"
-                    :listings="[listing]"
+                    height="100%"
+                    :show-legend="false"
+                    :show-controls="false"
+                    :fit-to-region="false"
+                    :markers="listingMarkers"
+                    :fit-to-markers="!selectedPolygon"
+                    :selected-geojson-polygon="selectedPolygon"
+                    :fit-to-selected-geojson-polygon="true"
                   />
                 </ClientOnly>
               </div>

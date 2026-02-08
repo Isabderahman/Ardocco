@@ -1,4 +1,6 @@
 import type { BackendResponse, LaravelPage } from '~/types/models/api'
+import type { GeoJSONPolygon } from '~/types/models/geojson'
+import type { TerrainType } from '~/types/enums/terrain'
 
 export type FicheTechnique = {
   id?: string
@@ -70,6 +72,7 @@ export type BackendListing = {
   address?: string | null
   latitude?: number | string | null
   longitude?: number | string | null
+  geojson_polygon?: GeoJSONPolygon | null
   superficie?: number | string | null
   prix_demande?: number | string | null
   prix_estime?: number | string | null
@@ -138,6 +141,28 @@ export type PublicListingsResponse = BackendResponse<LaravelPage<BackendListing>
 export type PublicListingResponse = BackendResponse<BackendListing> & {
   access_level: PublicListingAccessLevel
 }
+
+export type ListingVisibility = 'public' | 'private' | 'restricted'
+
+export type CreateListingPayload = {
+  reference?: string | null
+  title: string
+  description?: string | null
+  commune_id: string
+  quartier?: string | null
+  address?: string | null
+  latitude?: number | null
+  longitude?: number | null
+  geojson_polygon?: GeoJSONPolygon | null
+  superficie: number
+  prix_demande: number
+  type_terrain: TerrainType
+  visibility?: ListingVisibility | null
+  is_exclusive?: boolean
+  is_urgent?: boolean
+}
+
+export type CreateListingResponse = BackendResponse<BackendListing>
 
 export type PublicListingsFilters = {
   q: string

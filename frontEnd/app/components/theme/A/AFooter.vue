@@ -23,7 +23,7 @@ const quickLinks = [
   { label: 'Home', to: '/' },
   { label: 'About', to: '/about' },
   { label: 'Buy', to: '/terrains' },
-  { label: 'Sell', to: '/sell' },
+  { label: 'Sell', to: '/terrains/new' },
   { label: 'Blog', to: '/blog' },
   { label: 'Contact', to: '/contact' }
 ]

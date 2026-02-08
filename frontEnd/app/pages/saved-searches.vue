@@ -4,7 +4,8 @@ import type { SavedSearchRow } from '~/types/models/saved-search'
 
 definePageMeta({
   layout: 'dashboard',
-  title: 'My save searches'
+  title: 'My save searches',
+  middleware: 'auth'
 })
 
 const data: SavedSearchRow[] = [

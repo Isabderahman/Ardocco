@@ -3,19 +3,9 @@ import type { ExpertiseType } from '~/types/models/expert'
 
 definePageMeta({
   layout: 'dashboard',
-  title: 'Espace Expert'
+  title: 'Espace Expert',
+  middleware: 'expert'
 })
-
-const { token, user } = useAuth()
-
-if (!token.value) {
-  navigateTo('/login')
-}
-
-// Redirect if not expert or admin
-if (user.value?.role !== 'expert' && user.value?.role !== 'admin') {
-  navigateTo('/dashboard')
-}
 
 const activeTab = ref<ExpertiseType>('all')
 

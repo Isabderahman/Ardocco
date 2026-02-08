@@ -215,6 +215,13 @@ watch(visibleListings, () => {
   if (!exists) selectedListingId.value = null
 })
 
+const selectedListingPolygon = computed(() => {
+  const id = selectedListingId.value
+  if (!id) return null
+  const listing = visibleListings.value.find(l => l.id === id)
+  return listing?.geojson_polygon ?? null
+})
+
 function listingLocation(listing: BackendListing) {
   return listing.quartier
     || listing.commune?.name_fr
@@ -401,6 +408,7 @@ watch(boundsFilter, syncQueryToUrl)
                 :show-legend="false"
                 :show-controls="false"
                 :selected-marker-id="selectedListingId"
+                :selected-geojson-polygon="selectedListingPolygon"
                 @select-marker="selectedListingId = $event"
                 @moved="onMapMoved"
               />

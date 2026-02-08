@@ -1,4 +1,4 @@
-import type { PublicListingResponse, PublicListingsResponse } from '~/types/models/listing'
+import type { CreateListingPayload, CreateListingResponse, PublicListingResponse, PublicListingsResponse } from '~/types/models/listing'
 
 const DEFAULT_API_URL = '/api/backend'
 
@@ -9,6 +9,10 @@ function authHeaders(token?: string | null): Record<string, string> | undefined 
 }
 
 export const listingService = {
+  listingsUrl(apiBaseUrl: string = DEFAULT_API_URL) {
+    return `${apiBaseUrl}/listings`
+  },
+
   publicListingsUrl(apiBaseUrl: string = DEFAULT_API_URL) {
     return `${apiBaseUrl}/public/listings`
   },
@@ -30,6 +34,22 @@ export const listingService = {
 
   async fetchPublicListing(id: string, token?: string | null, apiBaseUrl: string = DEFAULT_API_URL) {
     return await $fetch<PublicListingResponse>(this.publicListingUrl(id, apiBaseUrl), {
+      headers: authHeaders(token)
+    })
+  },
+
+  async createListing(payload: CreateListingPayload, token?: string | null, apiBaseUrl: string = DEFAULT_API_URL) {
+    return await $fetch<CreateListingResponse>(this.listingsUrl(apiBaseUrl), {
+      method: 'POST',
+      body: payload,
+      headers: authHeaders(token)
+    })
+  },
+
+  async createListingFormData(formData: FormData, token?: string | null, apiBaseUrl: string = DEFAULT_API_URL) {
+    return await $fetch<CreateListingResponse>(this.listingsUrl(apiBaseUrl), {
+      method: 'POST',
+      body: formData,
       headers: authHeaders(token)
     })
   }

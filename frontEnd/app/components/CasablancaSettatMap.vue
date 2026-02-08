@@ -45,6 +45,7 @@ import { computed, onBeforeUnmount, onMounted, useId, watch } from 'vue'
 import type { Map as LeafletMap } from 'leaflet'
 import { useProvinceMap } from '~/composables/useProvinceMap'
 import type { LeafletNamespace } from '~/types/models/leaflet'
+import type { GeoJSONPolygon } from '~/types/models/geojson'
 import type { MapMarker } from '~/types/models/map'
 import type { ProvinceConfig } from '~/types/models/province'
 
@@ -62,6 +63,7 @@ const props = withDefaults(defineProps<{
   showLegend?: boolean
   showControls?: boolean
   showZoomControl?: boolean
+  scrollWheelZoom?: boolean
   interactiveLegend?: boolean
   fitToRegion?: boolean
   markers?: CasablancaSettatMapMarker[]
@@ -70,12 +72,16 @@ const props = withDefaults(defineProps<{
   markerSize?: number
   selectedMarkerId?: string | null
   selectedMarkerColor?: string
+  selectedGeojsonPolygon?: GeoJSONPolygon | null
+  selectedGeojsonPolygonColor?: string
+  fitToSelectedGeojsonPolygon?: boolean
 }>(), {
   height: 600,
   zoom: 9,
   showLegend: true,
   showControls: true,
   showZoomControl: true,
+  scrollWheelZoom: true,
   interactiveLegend: false,
   fitToRegion: true,
   markers: () => [],
@@ -83,7 +89,10 @@ const props = withDefaults(defineProps<{
   markerColor: '#f59e0b',
   markerSize: 32,
   selectedMarkerId: null,
-  selectedMarkerColor: '#2563eb'
+  selectedMarkerColor: '#2563eb',
+  selectedGeojsonPolygon: null,
+  selectedGeojsonPolygonColor: '#2563eb',
+  fitToSelectedGeojsonPolygon: false
 })
 
 const emit = defineEmits<{
@@ -102,6 +111,7 @@ const resolvedHeight = computed(() => {
 let map: LeafletMap | null = null
 let L: LeafletNamespace | null = null
 let markersLayer: ReturnType<LeafletNamespace['layerGroup']> | null = null
+let selectedPolygonLayer: ReturnType<LeafletNamespace['geoJSON']> | null = null
 let enabledProvinceCodes = new Set<string>()
 let markerById = new Map<string, { marker: CasablancaSettatMapMarker, layer: unknown }>()
 let moveEndHandler: (() => void) | null = null
@@ -219,6 +229,76 @@ function createPriceIcon(leaflet: LeafletNamespace, label: string, color: string
   })
 }
 
+function isGeoJSONPolygon(value: unknown): value is GeoJSONPolygon {
+  if (!value || typeof value !== 'object') return false
+  const maybe = value as { type?: unknown, coordinates?: unknown }
+  if (maybe.type !== 'Polygon') return false
+  if (!Array.isArray(maybe.coordinates) || maybe.coordinates.length === 0) return false
+  const ring = maybe.coordinates[0]
+  if (!Array.isArray(ring) || ring.length < 4) return false
+
+  return ring.every((pos) => {
+    if (!Array.isArray(pos) || pos.length < 2) return false
+    const lng = Number(pos[0])
+    const lat = Number(pos[1])
+    return Number.isFinite(lng) && Number.isFinite(lat)
+  })
+}
+
+function clearSelectedPolygon() {
+  if (!map || !L) {
+    selectedPolygonLayer = null
+    return
+  }
+
+  if (selectedPolygonLayer) {
+    try {
+      selectedPolygonLayer.remove()
+    } catch {
+      // no-op
+    }
+    selectedPolygonLayer = null
+  }
+}
+
+function syncSelectedPolygon() {
+  if (!map || !L) return
+
+  clearSelectedPolygon()
+
+  const polygon = props.selectedGeojsonPolygon
+  if (!polygon) return
+  if (!isGeoJSONPolygon(polygon)) return
+
+  const color = props.selectedGeojsonPolygonColor || props.selectedMarkerColor || '#2563eb'
+
+  selectedPolygonLayer = L.geoJSON(polygon, {
+    style: {
+      color,
+      weight: 3,
+      opacity: 0.9,
+      fillColor: color,
+      fillOpacity: 0.18
+    }
+  }).addTo(map)
+
+  if (!props.fitToSelectedGeojsonPolygon) return
+
+  const bounds = (selectedPolygonLayer as unknown as { getBounds?: () => { isValid?: () => boolean } }).getBounds?.()
+  const isValid = bounds && typeof bounds.isValid === 'function' ? bounds.isValid() : !!bounds
+  if (!isValid) return
+
+  suppressMoveEvents = true
+  map.once('moveend', () => {
+    suppressMoveEvents = false
+  })
+
+  map.fitBounds(bounds as unknown as never, {
+    padding: [30, 30],
+    maxZoom: 16
+  })
+}
+
 function mapBoundsPayload() {
   if (!map) return null
   const bounds = map.getBounds()
@@ -317,7 +397,7 @@ function initializeMap(leaflet: LeafletNamespace): LeafletMap {
 
   // Create map centered on Casablanca-Settat region
   map = leaflet
-    .map(resolvedMapId.value, { zoomControl: props.showZoomControl })
+    .map(resolvedMapId.value, { zoomControl: props.showZoomControl, scrollWheelZoom: props.scrollWheelZoom })
     .setView([33.2316, -7.5389], props.zoom)
 
   // Add OpenStreetMap tiles
@@ -415,6 +495,7 @@ async function reloadActiveProvinces(options?: { fitBounds?: boolean }) {
     fitBounds: options?.fitBounds ?? props.fitToRegion
   })
   syncMarkers()
+  syncSelectedPolygon()
 }
 
 /**
@@ -442,6 +523,7 @@ onMounted(() => {
         .finally(() => {
           canEmitMoveEvents = true
           syncMarkers()
+          syncSelectedPolygon()
           requestAnimationFrame(() => {
             map?.invalidateSize()
           })
@@ -460,6 +542,13 @@ watch(
 )
 
 watch(
+  () => [props.selectedGeojsonPolygon, props.selectedGeojsonPolygonColor, props.fitToSelectedGeojsonPolygon],
+  () => {
+    syncSelectedPolygon()
+  }
+)
+
+watch(
   () => props.selectedMarkerId,
   (id) => {
     if (!id) return
@@ -468,6 +557,7 @@ watch(
 )
 
 onBeforeUnmount(() => {
+  clearSelectedPolygon()
   markersLayer?.clearLayers()
   markersLayer = null
   markerById.clear()

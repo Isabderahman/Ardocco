@@ -1,4 +1,4 @@
-export type UserRole = 'acheteur' | 'vendeur' | 'agent' | 'expert' | 'admin'
+export type UserRole = 'acheteur' | 'vendeur' | 'agent' | 'expert' | 'admin' | 'promoteur'
 
 export type AuthUser = {
   id: string
@@ -37,6 +37,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   agent: 'Agent',
   expert: 'Expert',
   admin: 'Administrateur',
+  promoteur: 'Promoteur'
 }
 
 export const ROLE_DESCRIPTIONS: Record<UserRole, string> = {
@@ -45,4 +46,5 @@ export const ROLE_DESCRIPTIONS: Record<UserRole, string> = {
   agent: 'Gérez les demandes et accompagnez les clients',
   expert: 'Validez les expertises techniques, financières et juridiques',
   admin: 'Gérez la plateforme et les utilisateurs',
+  promoteur: 'Investissez et développez des projets immobiliers'
 }

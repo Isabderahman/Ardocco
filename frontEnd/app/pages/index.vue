@@ -401,60 +401,29 @@ const mapMarkers = computed<MapMarker[]>(() => {
     .filter((m): m is MapMarker => m !== null)
 })
 
-const featuredTerrains: TerrainCard[] = [
-  {
-    id: 't1',
-    title: 'Terrain — Casablanca Centre',
-    description: 'Idéal pour développement résidentiel',
-    location: 'Casablanca',
-    price: '1 250 000 MAD',
-    badge: 'Vedette',
-    to: '/terrains/1'
-  },
-  {
-    id: 't2',
-    title: 'Terrain — Settat Route',
-    description: 'Grande visibilité, accès facile',
-    location: 'Settat',
-    price: '980 000 MAD',
-    badge: 'Nouveau',
-    to: '/terrains/2'
-  },
-  {
-    id: 't3',
-    title: 'Terrain — Opportunité Côtière',
-    description: 'Parfait pour projets touristiques',
-    location: 'El Jadida',
-    price: '2 300 000 MAD',
-    badge: 'Hot',
-    to: '/terrains/3'
-  },
-  {
-    id: 't4',
-    title: 'Terrain — Zone en Croissance',
-    description: 'Quartier à haut potentiel',
-    location: 'Berrechid',
-    price: '740 000 MAD',
-    badge: 'Vedette',
-    to: '/terrains/4'
-  },
-  {
-    id: 't5',
-    title: 'Terrain — Zone Industrielle',
-    description: 'Adapté pour entrepôts et logistique',
-    location: 'Nouaceur',
-    price: '3 100 000 MAD',
-    badge: 'Vérifié',
-    to: '/terrains/5'
-  },
-  {
-    id: 't6',
-    title: 'Terrain — Résidentiel Calme',
-    description: 'Faible densité, environnement paisible',
-    location: 'Benslimane',
-    price: '860 000 MAD',
-    badge: 'Vedette',
-    to: '/terrains/6'
-  }
-]
+const featuredTerrains = computed<TerrainCard[]>(() => {
+  const items = listingsData.value?.data?.data || []
+
+  return items.slice(0, 6).map((listing) => {
+    const communeName = listing.commune?.name_fr || ''
+    const provinceName = listing.commune?.province?.name_fr || ''
+    const location = listing.quartier
+      || (communeName && provinceName ? `${communeName}, ${provinceName}` : (communeName || provinceName))
+      || 'Non spécifié'
+
+    const superficie = numeric(listing.superficie)
+    const superficieLabel = superficie != null ? `${superficie.toLocaleString('fr-MA', { maximumFractionDigits: 0 })} m²` : null
+    const typeLabel = listing.type_terrain ? String(listing.type_terrain) : null
+
+    return {
+      id: listing.id,
+      title: listing.title,
+      description: [typeLabel, superficieLabel].filter(Boolean).join(' · '),
+      location,
+      price: formatPrice(listing.prix_demande),
+      badge: 'Vedette',
+      to: `/terrains/${listing.id}`
+    }
+  })
+})
 </script>

@@ -1,7 +1,11 @@
 <script setup lang="ts">
-definePageMeta({ title: 'Login' })
+definePageMeta({
+  title: 'Login',
+  middleware: 'guest'
+})
 
 const { login } = useAuth()
+const route = useRoute()
 
 const state = reactive({
   email: '',
@@ -11,11 +15,40 @@ const state = reactive({
 const pending = ref(false)
 const error = ref<string | null>(null)
 
+function safeRedirectPath(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  const trimmed = value.trim()
+  if (!trimmed.startsWith('/')) return null
+  if (trimmed.startsWith('//')) return null
+  return trimmed
+}
+
 async function onSubmit() {
   pending.value = true
   error.value = null
   try {
-    await login(state.email, state.password)
+    const res = await login(state.email, state.password)
+
+    const redirect = safeRedirectPath(route.query.redirect)
+    if (redirect) {
+      await navigateTo(redirect)
+      return
+    }
+
+    const role = res.user?.role
+    if (role === 'admin') {
+      await navigateTo('/admin')
+      return
+    }
+    if (role === 'expert') {
+      await navigateTo('/expert')
+      return
+    }
+    if (role === 'agent' || role === 'vendeur') {
+      await navigateTo('/dashboard')
+      return
+    }
+
     await navigateTo('/dashboard')
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Login failed.'
@@ -47,8 +80,10 @@ async function onSubmit() {
             <UFormField
               label="Email"
               name="email"
+              class=" w-full"
             >
               <UInput
+                class="w-full"
                 v-model="state.email"
                 type="email"
               />
@@ -56,19 +91,23 @@ async function onSubmit() {
             <UFormField
               label="Password"
               name="password"
+              class="w-full"
             >
               <UInput
+                class="w-full"
                 v-model="state.password"
                 type="password"
               />
             </UFormField>
+            <div class="w-full flex justify-center gap-1">
             <UButton
               type="submit"
               label="Login"
               color="primary"
               :loading="pending"
-              class="w-full rounded-full"
+              class="rounded-full justify-center w-1/2"
             />
+            </div>
           </div>
         </ThemeAForm>
       </ThemeACard>

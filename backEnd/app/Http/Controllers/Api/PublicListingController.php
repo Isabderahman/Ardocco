@@ -21,6 +21,7 @@ class PublicListingController extends Controller
         'prix_demande',
         'latitude',
         'longitude',
+        'geojson_polygon',
         'quartier',
         'commune_id',
         'views_count',

@@ -5,7 +5,8 @@ import type { DashboardFavoriteRow, DashboardReview } from '~/types/models/dashb
 
 definePageMeta({
   layout: 'dashboard',
-  title: 'Dashboard'
+  title: 'Dashboard',
+  middleware: 'auth'
 })
 
 const favorites: DashboardFavoriteRow[] = [

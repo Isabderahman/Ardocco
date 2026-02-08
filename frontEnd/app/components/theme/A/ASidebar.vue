@@ -11,20 +11,41 @@ const props = withDefaults(defineProps<{
   logoTo: '/',
   collapsible: false,
   items: () => ([
-    { label: 'Dashboards', icon: 'i-lucide-layout-dashboard', to: '/dashboard' },
+    { label: 'Dashboard', icon: 'i-lucide-layout-dashboard', to: '/dashboard' },
+    { label: 'Add Terrain', icon: 'i-lucide-plus-square', to: '/terrains/new' },
     { label: 'Profile', icon: 'i-lucide-user', to: '/profile' },
     { label: 'My package', icon: 'i-lucide-package', to: '/package' },
     { label: 'My favorites', icon: 'i-lucide-heart', to: '/favorites' },
     { label: 'My save searches', icon: 'i-lucide-search', to: '/saved-searches' },
     { label: 'Reviews', icon: 'i-lucide-message-square-text', to: '/reviews' },
-    { label: 'My Terrains', icon: 'i-lucide-map', to: '/terrains' },
-    { label: 'Add Terrain', icon: 'i-lucide-plus-square', to: '/terrains/new' },
+    { label: 'Browse Terrains', icon: 'i-lucide-map', to: '/terrains' },
+    { label: 'Admin', icon: 'i-lucide-shield', to: '/admin' },
+    { label: 'Expert', icon: 'i-lucide-award', to: '/expert' },
     { label: 'Logout', icon: 'i-lucide-log-out', to: '/logout' }
   ])
 })
 
 const open = defineModel<boolean>('open', { default: false })
 const collapsed = defineModel<boolean>('collapsed', { default: false })
+
+const { canCreateListing, canAccessAdmin, hasRole } = useAccess()
+
+function filterItems(items: ASidebarItem[]): ASidebarItem[] {
+  return items
+    .map((item) => {
+      const children = Array.isArray(item.children) ? filterItems(item.children) : undefined
+      return { ...item, children }
+    })
+    .filter((item) => {
+      if (item.to === '/terrains/new') return canCreateListing.value
+      if (item.to === '/admin') return canAccessAdmin.value
+      if (item.to === '/expert') return hasRole('expert', 'admin')
+      if (!item.to && Array.isArray(item.children) && item.children.length === 0) return false
+      return true
+    })
+}
+
+const filteredItems = computed(() => filterItems(props.items ?? []))
 </script>
 
 <template>
@@ -69,7 +90,7 @@ const collapsed = defineModel<boolean>('collapsed', { default: false })
     </template>
 
     <UNavigationMenu
-      :items="props.items"
+      :items="filteredItems"
       orientation="vertical"
       :collapsed="collapsed"
       :tooltip="true"

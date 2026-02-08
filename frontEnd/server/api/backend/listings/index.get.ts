@@ -1,13 +1,11 @@
 import { getCookie, getHeader, getQuery } from 'h3'
+import { normalizeBackendBaseUrl } from '~~/server/utils/backendBaseUrl'
 
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
-  const backendBaseUrlRaw = String(config.backendBaseUrl || 'http://localhost:8000').trim()
-  const backendBaseUrl = /^https?:\/\//.test(backendBaseUrlRaw)
-    ? backendBaseUrlRaw
-    : `http://${backendBaseUrlRaw}`
+  const backendBaseUrl = normalizeBackendBaseUrl(config.backendBaseUrl || 'http://localhost:8000')
 
-  const url = new URL('/api/public/listings', backendBaseUrl)
+  const url = new URL('/api/listings', backendBaseUrl)
 
   const query = getQuery(event)
   for (const [key, value] of Object.entries(query)) {
