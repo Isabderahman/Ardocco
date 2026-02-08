@@ -409,6 +409,7 @@ watch(boundsFilter, syncQueryToUrl)
                 :show-controls="false"
                 :selected-marker-id="selectedListingId"
                 :selected-geojson-polygon="selectedListingPolygon"
+                :fit-to-selected-geojson-polygon="true"
                 @select-marker="selectedListingId = $event"
                 @moved="onMapMoved"
               />

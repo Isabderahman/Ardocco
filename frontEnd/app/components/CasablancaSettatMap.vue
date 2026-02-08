@@ -380,6 +380,13 @@ function focusMarker(id: string) {
   layer?.openPopup?.()
 }
 
+function openMarkerPopup(id: string) {
+  const entry = markerById.get(id)
+  if (!entry) return
+  const layer = entry.layer as { openPopup?: () => void } | undefined
+  layer?.openPopup?.()
+}
+
 function resolveLeafletModule(mod: unknown): LeafletNamespace {
   if (mod && typeof mod === 'object' && 'default' in mod) {
     return (mod as { default: LeafletNamespace }).default
@@ -552,6 +559,11 @@ watch(
   () => props.selectedMarkerId,
   (id) => {
     if (!id) return
+    if (props.fitToSelectedGeojsonPolygon && isGeoJSONPolygon(props.selectedGeojsonPolygon)) {
+      openMarkerPopup(id)
+      return
+    }
+
     focusMarker(id)
   }
 )
