@@ -1,4 +1,5 @@
-import type { AuthUser, LoginResponse } from '~/types/models/auth'
+import type { AuthUser } from '~/types/models/auth'
+import { authService } from '~/services/authService'
 
 export function useAuth() {
   const token = useCookie<string | null>('auth_token', {
@@ -10,13 +11,10 @@ export function useAuth() {
   const isAuthenticated = computed(() => Boolean(token.value))
 
   async function login(email: string, password: string) {
-    const res = await $fetch<LoginResponse>('/api/backend/auth/login', {
-      method: 'POST',
-      body: {
-        email,
-        password,
-        device_name: 'web'
-      }
+    const res = await authService.login({
+      email,
+      password,
+      device_name: 'web'
     })
 
     if (!res?.success || !res.token) {
@@ -31,7 +29,7 @@ export function useAuth() {
 
   async function logout() {
     try {
-      await $fetch('/api/backend/auth/logout', { method: 'POST' })
+      await authService.logout()
     } finally {
       token.value = null
       user.value = null

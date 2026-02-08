@@ -8,8 +8,49 @@ use Illuminate\Http\Request;
 
 class PublicListingController extends Controller
 {
+    /**
+     * Fields visible to visitors (non-authenticated users)
+     * According to the mind map: limited preview for visitors
+     */
+    private array $visitorFields = [
+        'id',
+        'reference',
+        'title',
+        'type_terrain',
+        'superficie',
+        'prix_demande',
+        'latitude',
+        'longitude',
+        'quartier',
+        'commune_id',
+        'views_count',
+        'published_at',
+        'created_at',
+    ];
+
+    /**
+     * Additional fields visible to authenticated users (acheteur, vendeur, agent, expert, admin)
+     */
+    private array $authenticatedFields = [
+        'description',
+        'address',
+        'prix_estime',
+        'prix_par_m2',
+        'titre_foncier',
+        'forme_terrain',
+        'topographie',
+        'viabilisation',
+        'zonage',
+        'coefficient_occupation',
+        'hauteur_max',
+        'owner_id',
+        'agent_id',
+    ];
+
     public function index(Request $request)
     {
+        $isAuthenticated = $request->user() !== null;
+
         $query = Listing::query()
             ->available()
             ->where('visibility', 'public')
@@ -19,12 +60,20 @@ class PublicListingController extends Controller
             ->orderByDesc('published_at')
             ->orderByDesc('created_at');
 
+        // Apply filters
         if ($request->filled('type_terrain')) {
             $query->where('type_terrain', $request->input('type_terrain'));
         }
 
         if ($request->filled('commune_id')) {
             $query->where('commune_id', $request->input('commune_id'));
+        }
+
+        // Rentability filter (new feature from mind map)
+        if ($request->filled('rentabilite_min')) {
+            $query->whereHas('ficheFinanciere', function ($q) use ($request) {
+                $q->where('rentabilite', '>=', (float) $request->input('rentabilite_min'));
+            });
         }
 
         $prixMin = $request->filled('prix_min') ? (float) $request->input('prix_min') : null;
@@ -74,15 +123,21 @@ class PublicListingController extends Controller
             }
         }
 
+        // Select appropriate fields based on authentication
+        if (!$isAuthenticated) {
+            $query->select($this->visitorFields);
+        }
+
         $listings = $query->paginate((int) $request->input('per_page', 20));
 
         return response()->json([
             'success' => true,
             'data' => $listings,
+            'is_authenticated' => $isAuthenticated,
         ]);
     }
 
-    public function show(Listing $listing)
+    public function show(Request $request, Listing $listing)
     {
         if ($listing->visibility !== 'public' || !in_array($listing->status, ['publie', 'valide'], true)) {
             return response()->json([
@@ -91,13 +146,49 @@ class PublicListingController extends Controller
             ], 404);
         }
 
-        $listing->load([
-            'commune.province.region',
-        ]);
+        $isAuthenticated = $request->user() !== null;
+        $user = $request->user();
+
+        // Increment view count
+        $listing->increment('views_count');
+
+        // Load relations based on authentication
+        $relations = ['commune.province.region'];
+
+        if ($isAuthenticated && $user->canAccessFullListingDetails()) {
+            // Full access for authenticated users
+            $relations = array_merge($relations, [
+                'ficheTechnique',
+                'ficheFinanciere',
+                'ficheJuridique',
+                'owner:id,first_name,last_name,phone,email,company_name',
+                'agent:id,first_name,last_name,phone,email,company_name',
+                'documents' => function ($query) {
+                    $query->where('is_public', true);
+                },
+            ]);
+
+            $listing->load($relations);
+
+            return response()->json([
+                'success' => true,
+                'data' => $listing,
+                'access_level' => 'full',
+            ]);
+        }
+
+        // Limited access for visitors (non-authenticated)
+        $listing->load($relations);
+
+        // Return only visitor fields
+        $limitedData = $listing->only($this->visitorFields);
+        $limitedData['commune'] = $listing->commune;
 
         return response()->json([
             'success' => true,
-            'data' => $listing,
+            'data' => $limitedData,
+            'access_level' => 'limited',
+            'message' => 'Connectez-vous pour accéder aux détails complets',
         ]);
     }
 }

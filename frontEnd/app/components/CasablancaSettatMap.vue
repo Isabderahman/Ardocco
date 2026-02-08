@@ -50,6 +50,11 @@ import type { ProvinceConfig } from '~/types/models/province'
 
 export type CasablancaSettatMapMarker = MapMarker
 
+type MapBoundsPayload = {
+  southWest: { lat: number, lng: number }
+  northEast: { lat: number, lng: number }
+}
+
 const props = withDefaults(defineProps<{
   height?: number | string
   mapId?: string
@@ -63,6 +68,8 @@ const props = withDefaults(defineProps<{
   fitToMarkers?: boolean
   markerColor?: string
   markerSize?: number
+  selectedMarkerId?: string | null
+  selectedMarkerColor?: string
 }>(), {
   height: 600,
   zoom: 9,
@@ -74,8 +81,15 @@ const props = withDefaults(defineProps<{
   markers: () => [],
   fitToMarkers: false,
   markerColor: '#f59e0b',
-  markerSize: 32
+  markerSize: 32,
+  selectedMarkerId: null,
+  selectedMarkerColor: '#2563eb'
 })
+
+const emit = defineEmits<{
+  (e: 'select-marker', id: string): void
+  (e: 'moved', bounds: MapBoundsPayload): void
+}>()
 
 const internalMapId = useId()
 const resolvedMapId = computed(() => props.mapId || `map-${internalMapId}`)
@@ -89,6 +103,10 @@ let map: LeafletMap | null = null
 let L: LeafletNamespace | null = null
 let markersLayer: ReturnType<LeafletNamespace['layerGroup']> | null = null
 let enabledProvinceCodes = new Set<string>()
+let markerById = new Map<string, { marker: CasablancaSettatMapMarker, layer: unknown }>()
+let moveEndHandler: (() => void) | null = null
+let canEmitMoveEvents = false
+let suppressMoveEvents = false
 
 // Province configurations
 const PROVINCES: ProvinceConfig[] = [
@@ -186,7 +204,7 @@ function escapeHtml(value: string) {
     .replaceAll('\'', '&#039;')
 }
 
-function createPriceIcon(leaflet: LeafletNamespace, label: string, color: string) {
+function createPriceIcon(leaflet: LeafletNamespace, label: string, color: string, selected: boolean) {
   const safeColor = String(color || '#f59e0b')
   const safeLabel = escapeHtml(String(label || '').trim())
   const width = Math.min(220, Math.max(84, safeLabel.length * 8.5 + 28))
@@ -194,11 +212,22 @@ function createPriceIcon(leaflet: LeafletNamespace, label: string, color: string
 
   return leaflet.divIcon({
     className: 'price-marker',
-    html: `<div class="price-marker__bubble" style="--marker-color:${safeColor}">${safeLabel}</div>`,
+    html: `<div class="price-marker__bubble" data-selected="${selected ? 'true' : 'false'}" style="--marker-color:${safeColor}">${safeLabel}</div>`,
     iconSize: [width, height],
     iconAnchor: [width / 2, height],
     popupAnchor: [0, -height]
   })
+}
+
+function mapBoundsPayload() {
+  if (!map) return null
+  const bounds = map.getBounds()
+  const sw = bounds.getSouthWest()
+  const ne = bounds.getNorthEast()
+  return {
+    southWest: { lat: sw.lat, lng: sw.lng },
+    northEast: { lat: ne.lat, lng: ne.lng }
+  } satisfies MapBoundsPayload
 }
 
 function syncMarkers() {
@@ -210,24 +239,35 @@ function syncMarkers() {
     markersLayer.clearLayers()
   }
 
+  markerById.clear()
+
   const valid = (props.markers || []).filter(m => Number.isFinite(m.lat) && Number.isFinite(m.lng))
-  const defaultIcon = createPinIcon(L, props.markerColor, props.markerSize)
 
   valid.forEach((marker) => {
+    const isSelected = !!props.selectedMarkerId && marker.id === props.selectedMarkerId
+    const color = isSelected ? (props.selectedMarkerColor || props.markerColor) : props.markerColor
+    const size = isSelected ? (Number(props.markerSize) + 4) : props.markerSize
+
     const icon = marker.label
-      ? createPriceIcon(L!, marker.label, props.markerColor)
-      : defaultIcon
+      ? createPriceIcon(L!, marker.label, color, isSelected)
+      : createPinIcon(L!, color, size)
 
     const layer = L!.marker([marker.lat, marker.lng], {
       icon,
-      title: marker.title || undefined
+      title: marker.title || undefined,
+      zIndexOffset: isSelected ? 1000 : 0
     })
 
     if (marker.title || marker.subtitle || marker.href) {
       layer.bindPopup(createMarkerPopup(L!, marker))
     }
 
+    layer.on('click', () => {
+      emit('select-marker', marker.id)
+    })
+
     layer.addTo(markersLayer!)
+    markerById.set(marker.id, { marker, layer })
   })
 
   if (props.fitToMarkers && valid.length) {
@@ -237,6 +277,27 @@ function syncMarkers() {
       maxZoom: 14
     })
   }
+}
+
+function focusMarker(id: string) {
+  if (!map || !L) return
+  const entry = markerById.get(id)
+  if (!entry) return
+
+  const marker = entry.marker
+  const layer = entry.layer as { openPopup?: () => void } | undefined
+
+  suppressMoveEvents = true
+  map.once('moveend', () => {
+    suppressMoveEvents = false
+  })
+
+  map.flyTo([marker.lat, marker.lng], Math.max(map.getZoom(), 13), {
+    animate: true,
+    duration: 0.55
+  })
+
+  layer?.openPopup?.()
 }
 
 function resolveLeafletModule(mod: unknown): LeafletNamespace {
@@ -269,6 +330,14 @@ function initializeMap(leaflet: LeafletNamespace): LeafletMap {
   if (props.showLegend) {
     addLegend(leaflet, map)
   }
+
+  moveEndHandler = () => {
+    if (!canEmitMoveEvents) return
+    if (suppressMoveEvents) return
+    const payload = mapBoundsPayload()
+    if (payload) emit('moved', payload)
+  }
+  map.on('moveend', moveEndHandler)
 
   return map
 }
@@ -365,26 +434,47 @@ onMounted(() => {
     import('leaflet').then((LeafletModule) => {
       const leaflet = resolveLeafletModule(LeafletModule)
       const mapInstance = initializeMap(leaflet)
+      requestAnimationFrame(() => {
+        mapInstance.invalidateSize()
+      })
       syncMarkers()
       loadProvinceBoundariesByRegion(leaflet, mapInstance, REGION_CODE, activeProvinceConfigs(), { fitBounds: props.fitToRegion })
         .finally(() => {
+          canEmitMoveEvents = true
           syncMarkers()
+          requestAnimationFrame(() => {
+            map?.invalidateSize()
+          })
+          if (props.selectedMarkerId) focusMarker(props.selectedMarkerId)
         })
     })
   }
 })
 
 watch(
-  () => [props.markers, props.fitToMarkers, props.markerColor, props.markerSize],
+  () => [props.markers, props.fitToMarkers, props.markerColor, props.markerSize, props.selectedMarkerId, props.selectedMarkerColor],
   () => {
     syncMarkers()
   },
   { deep: true }
 )
 
+watch(
+  () => props.selectedMarkerId,
+  (id) => {
+    if (!id) return
+    focusMarker(id)
+  }
+)
+
 onBeforeUnmount(() => {
   markersLayer?.clearLayers()
   markersLayer = null
+  markerById.clear()
+  if (map && moveEndHandler) {
+    map.off('moveend', moveEndHandler)
+  }
+  moveEndHandler = null
   map?.remove()
   map = null
   L = null
@@ -594,6 +684,13 @@ onBeforeUnmount(() => {
   white-space: nowrap;
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.25);
   position: relative;
+}
+
+:deep(.price-marker__bubble[data-selected="true"]) {
+  transform: translateY(-1px) scale(1.06);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.35);
+  outline: 2px solid rgba(255, 255, 255, 0.75);
+  outline-offset: -2px;
 }
 
 :deep(.price-marker__bubble::after) {

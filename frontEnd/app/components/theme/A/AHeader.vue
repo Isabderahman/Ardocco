@@ -100,7 +100,7 @@ const { isAuthenticated } = useAuth()
 const navItems: NavItem[] = [
   { label: 'Home', to: '/' },
   { label: 'About', to: '/about' },
-  { label: 'Buy', to: '/buy' },
+  { label: 'Buy', to: '/terrains' },
   { label: 'Blog', to: '/blog' },
   { label: 'Contact', to: '/contact' }
 ]

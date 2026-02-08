@@ -22,7 +22,7 @@ async function onNewsletterSubmit() {
 const quickLinks = [
   { label: 'Home', to: '/' },
   { label: 'About', to: '/about' },
-  { label: 'Buy', to: '/buy' },
+  { label: 'Buy', to: '/terrains' },
   { label: 'Sell', to: '/sell' },
   { label: 'Blog', to: '/blog' },
   { label: 'Contact', to: '/contact' }
