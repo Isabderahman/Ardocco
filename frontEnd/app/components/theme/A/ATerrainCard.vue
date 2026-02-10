@@ -1,20 +1,49 @@
 <script setup lang="ts">
-withDefaults(defineProps<{
+import type { GeoJSONPolygon } from '~/types/models/geojson'
+
+const props = withDefaults(defineProps<{
   title: string
   to?: string
   price?: string
   location?: string
   badge?: string
   description?: string
+  imageUrl?: string | null
+  lat?: number | null
+  lng?: number | null
+  geojsonPolygon?: GeoJSONPolygon | null
+  area?: string
 }>(), {
   badge: 'Featured'
 })
+
+const hasMapData = computed(() => props.geojsonPolygon || (props.lat != null && props.lng != null))
 </script>
 
 <template>
   <UCard class="overflow-hidden rounded-xl shadow-sm">
-    <div class="relative aspect-[16/10] bg-elevated w-full">
-      <div class="absolute inset-0 grid place-items-center">
+    <div class="relative aspect-[3/3] bg-elevated w-full">
+      <!-- Image if available -->
+      <img
+        v-if="props.imageUrl"
+        :src="props.imageUrl"
+        :alt="props.title"
+        class="absolute inset-0 h-full w-full object-cover"
+        loading="lazy"
+        decoding="async"
+      >
+
+      <!-- Map fallback if no image but has coordinates -->
+      <MiniListingMap
+        v-else-if="hasMapData"
+        :id="props.to || props.title"
+        :lat="props.lat ?? null"
+        :lng="props.lng ?? null"
+        :geojson-polygon="props.geojsonPolygon || null"
+      />
+
+      <!-- Placeholder if neither image nor map data -->
+      <div v-else class="absolute inset-0 grid place-items-center">
         <UIcon
           name="i-lucide-image"
           class="size-7 text-dimmed"
@@ -25,7 +54,7 @@ withDefaults(defineProps<{
         v-if="badge"
         color="primary"
         variant="solid"
-        class="absolute left-3 top-3"
+        class="absolute left-3 top-3 z-10"
       >
         {{ badge }}
       </UBadge>
@@ -38,7 +67,7 @@ withDefaults(defineProps<{
         </h3>
         <p
           v-if="description"
-          class="text-sm text-muted"
+          class="text-sm text-muted line-clamp-2"
         >
           {{ description }}
         </p>
@@ -56,12 +85,21 @@ withDefaults(defineProps<{
             />
             <span class="truncate">{{ location }}</span>
           </p>
-          <p
-            v-if="price"
-            class="text-sm font-semibold text-highlighted"
-          >
-            {{ price }}
-          </p>
+          <div class="flex items-center gap-2">
+            <p
+              v-if="price"
+              class="text-sm font-semibold text-highlighted"
+            >
+              {{ price }}
+            </p>
+            <span v-if="price && area" class="text-muted">·</span>
+            <p
+              v-if="area"
+              class="text-sm text-muted"
+            >
+              {{ area }}
+            </p>
+          </div>
         </div>
 
         <UButton

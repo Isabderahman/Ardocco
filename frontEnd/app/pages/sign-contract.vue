@@ -33,6 +33,13 @@ const contractTerms = {
     'Je comprends que les analyses financières sont indicatives et ne constituent pas un conseil en investissement',
     'Je respecterai les conditions générales d\'utilisation de la plateforme ARDOCCO',
   ],
+  promoteur: [
+    'J\'accepte d\'accéder aux informations détaillées des terrains disponibles',
+    'Je m\'engage à demander l\'accès aux annonces des vendeurs avant tout contact',
+    'Je m\'engage à respecter la confidentialité des données partagées',
+    'Je m\'engage à respecter les délais et procédures d\'investissement',
+    'Je respecterai les conditions générales d\'utilisation de la plateforme ARDOCCO',
+  ],
 }
 
 const submitContract = async () => {

@@ -23,6 +23,24 @@ function formatPrice(price: number | string | null | undefined) {
     maximumFractionDigits: 0
   }).format(numPrice)
 }
+
+function numeric(value: unknown): number | null {
+  const n = Number(value)
+  return Number.isFinite(n) ? n : null
+}
+
+function coverPhotoUrl(listing: BackendListing): string | null {
+  const docs = listing.documents
+  if (!Array.isArray(docs)) return null
+
+  const photo = docs.find((doc) => {
+    const obj = doc as { document_type?: unknown, file_path?: unknown }
+    return obj?.document_type === 'photos' && typeof obj.file_path === 'string'
+  }) as { file_path?: string } | undefined
+
+  const path = String(photo?.file_path || '').replace(/^\/+/, '')
+  return path ? `/storage/${path}` : null
+}
 </script>
 
 <template>
@@ -37,6 +55,10 @@ function formatPrice(price: number | string | null | undefined) {
         :location="listing.quartier || listing.commune?.name_fr || 'Non spécifié'"
         :price="formatPrice(listing.prix_demande)"
         :area="listing.superficie ? `${listing.superficie} m²` : '—'"
+        :image-url="coverPhotoUrl(listing)"
+        :lat="numeric(listing.latitude)"
+        :lng="numeric(listing.longitude)"
+        :geojson-polygon="listing.geojson_polygon ?? null"
         :show-limited-hint="!props.isAuthenticated"
       />
     </div>

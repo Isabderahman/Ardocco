@@ -12,13 +12,10 @@ const props = withDefaults(defineProps<{
   collapsible: false,
   items: () => ([
     { label: 'Dashboard', icon: 'i-lucide-layout-dashboard', to: '/dashboard' },
+    { label: 'Mes terrains', icon: 'i-lucide-map', to: '/dashboard/terrains' },
     { label: 'Add Terrain', icon: 'i-lucide-plus-square', to: '/terrains/new' },
     { label: 'Profile', icon: 'i-lucide-user', to: '/profile' },
-    { label: 'My package', icon: 'i-lucide-package', to: '/package' },
-    { label: 'My favorites', icon: 'i-lucide-heart', to: '/favorites' },
-    { label: 'My save searches', icon: 'i-lucide-search', to: '/saved-searches' },
-    { label: 'Reviews', icon: 'i-lucide-message-square-text', to: '/reviews' },
-    { label: 'Browse Terrains', icon: 'i-lucide-map', to: '/terrains' },
+    { label: 'Browse Terrains', icon: 'i-lucide-search', to: '/terrains' },
     { label: 'Admin', icon: 'i-lucide-shield', to: '/admin' },
     { label: 'Expert', icon: 'i-lucide-award', to: '/expert' },
     { label: 'Logout', icon: 'i-lucide-log-out', to: '/logout' }
@@ -38,8 +35,9 @@ function filterItems(items: ASidebarItem[]): ASidebarItem[] {
     })
     .filter((item) => {
       if (item.to === '/terrains/new') return canCreateListing.value
+      if (item.to === '/dashboard/terrains') return canCreateListing.value
       if (item.to === '/admin') return canAccessAdmin.value
-      if (item.to === '/expert') return hasRole('expert', 'admin')
+      if (item.to === '/expert') return hasRole('expert')
       if (!item.to && Array.isArray(item.children) && item.children.length === 0) return false
       return true
     })

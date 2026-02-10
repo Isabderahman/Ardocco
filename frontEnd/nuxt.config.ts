@@ -1,6 +1,10 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
-export default defineNuxtConfig({
+const env = ((globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process?.env) || {}
+const backendBaseUrl = env.NUXT_BACKEND_BASE_URL
+  || env.BACKEND_BASE_URL
+  || (env.NODE_ENV === 'production' ? 'https://api.ardocco.com' : 'http://localhost:8000')
 
+export default defineNuxtConfig({
   modules: [
     '@nuxt/eslint',
     '@nuxt/ui'
@@ -13,6 +17,8 @@ export default defineNuxtConfig({
 
   app: {
     head: {
+      title: 'Ardocco',
+      titleTemplate: '%s · Ardocco',
       link: [
         { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: 'anonymous' },
@@ -52,10 +58,9 @@ export default defineNuxtConfig({
   },
 
   runtimeConfig: {
-    backendBaseUrl: 'http://localhost:8000',
+    backendBaseUrl,
     public: {
-      googleMapsApiKey: '',
-      apiBaseUrl: ''
+      googleMapsApiKey: ''
     }
   },
 

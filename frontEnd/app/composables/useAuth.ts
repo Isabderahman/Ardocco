@@ -1,4 +1,4 @@
-import type { AuthUser } from '~/types/models/auth'
+import type { AuthUser, RegisterData, RegisterResponse } from '~/types/models/auth'
 import { authService } from '~/services/authService'
 
 type MeResponse = {
@@ -80,6 +80,25 @@ export function useAuth() {
     return res
   }
 
+  async function register(data: RegisterData): Promise<RegisterResponse> {
+    const res = await authService.register({
+      ...data,
+      device_name: 'web'
+    })
+
+    if (!res?.success) {
+      throw new Error(res?.message || 'Registration failed.')
+    }
+
+    // If token is returned (agent/expert), set session
+    if (res.token) {
+      token.value = res.token
+      user.value = res.user as AuthUser || null
+    }
+
+    return res
+  }
+
   async function logout() {
     try {
       await authService.logout()
@@ -96,6 +115,7 @@ export function useAuth() {
     ensureUserLoaded,
     refreshUser,
     login,
+    register,
     logout
   }
 }

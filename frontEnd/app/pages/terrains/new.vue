@@ -305,7 +305,9 @@ async function submit() {
   fd.set('title', form.title.trim())
   fd.set('commune_id', form.commune_id)
 
-  fd.set('superficie_unknown', String(form.superficie_unknown))
+  // Laravel boolean validation accepts: true, false, 1, 0, "1", "0"
+  // It does NOT accept "true" or "false" strings, so we use "1"/"0"
+  fd.set('superficie_unknown', form.superficie_unknown ? '1' : '0')
   fd.set('superficie_m2', String(form.superficie_unknown ? 0 : (form.superficie_m2 ?? '')))
   fd.set('perimetre', form.perimetre)
   fd.set('zonage', form.zonage)
@@ -314,19 +316,19 @@ async function submit() {
     fd.set('geojson_polygon', form.geojson_polygon.trim())
   }
 
-  fd.set('price_on_request', String(form.price_on_request))
+  fd.set('price_on_request', form.price_on_request ? '1' : '0')
   fd.set('price', String(form.price_on_request ? 0 : (form.price ?? '')))
-  fd.set('price_per_m2', String(form.price_per_m2))
-  fd.set('negotiable', String(form.negotiable))
+  fd.set('price_per_m2', form.price_per_m2 ? '1' : '0')
+  fd.set('negotiable', form.negotiable ? '1' : '0')
 
   fd.set('phone', form.phone.trim())
   fd.set('whatsapp', form.whatsapp.trim())
   fd.set('email', form.email.trim())
 
   fd.set('description', form.description.trim())
-  fd.set('owner_attestation', String(form.owner_attestation))
+  fd.set('owner_attestation', form.owner_attestation ? '1' : '0')
 
-  fd.set('titre_foncier', String(form.titre_foncier === true))
+  fd.set('titre_foncier', form.titre_foncier === true ? '1' : '0')
 
   if (form.titre_foncier === true) {
     fd.set('reference_tf', form.reference_tf.trim())
@@ -342,8 +344,15 @@ async function submit() {
     })
   }
 
-  const listing = await createFormData(fd)
-  await navigateTo(`/terrains/${encodeURIComponent(listing.id)}`)
+  const listing = await createFormData(fd) as { id?: unknown }
+  const id = typeof listing?.id === 'string' ? listing.id.trim() : ''
+  if (!id) {
+    throw new Error("Annonce créée mais l'identifiant est manquant. Veuillez réessayer.")
+  }
+
+  // Redirect to dashboard - the listing is in 'brouillon' (draft) status
+  // and not publicly visible yet, so the public page would show 404
+  await navigateTo('/dashboard')
 }
 
 watch(
@@ -493,7 +502,7 @@ watch(
               class="rounded-xl border border-green-200 bg-green-50 p-4"
             >
               <UFormField label="Numéro de titre foncier *" name="reference_tf">
-                <UInput v-model="form.reference_tf" placeholder="Ex: 123456/Z" />
+                <UInput v-model="form.reference_tf" placeholder="Ex: 123456/Z" class="w-full" />
                 <p v-if="errors.reference_tf" class="mt-1 text-xs text-red-600">
                   {{ errors.reference_tf }}
                 </p>
@@ -539,6 +548,7 @@ watch(
                 label-key="label"
                 :search-input="false"
                 placeholder="Choisir un type"
+                class="w-full"
               />
               <p v-if="errors.type_terrain" class="mt-1 text-xs text-red-600">
                 {{ errors.type_terrain }}
@@ -546,7 +556,7 @@ watch(
             </UFormField>
 
             <UFormField label="Titre de l'annonce *" name="title">
-              <UInput v-model="form.title" placeholder="Ex: Terrain résidentiel 500m² à Casablanca" />
+              <UInput v-model="form.title" placeholder="Ex: Terrain résidentiel 500m² à Casablanca" class="w-full" />
               <p v-if="errors.title" class="mt-1 text-xs text-red-600">
                 {{ errors.title }}
               </p>
@@ -560,6 +570,7 @@ watch(
                   value-key="value"
                   label-key="label"
                   :search-input="false"
+                  class="w-full"
                 />
               </UFormField>
 
@@ -571,6 +582,7 @@ watch(
                   label-key="label"
                   :loading="communesPending"
                   placeholder="Sélectionnez une ville"
+                  class="w-full"
                 />
                 <p v-if="communesError" class="mt-1 text-xs text-red-600">
                   Impossible de charger les villes.
@@ -588,6 +600,7 @@ watch(
                 :disabled="form.superficie_unknown"
                 placeholder="Ex: 500"
                 :format-options="{ maximumFractionDigits: 0 }"
+                class="w-full"
               />
               <p v-if="errors.superficie_m2" class="mt-1 text-xs text-red-600">
                 {{ errors.superficie_m2 }}
@@ -612,6 +625,7 @@ watch(
                   value-key="value"
                   label-key="label"
                   :search-input="false"
+                  class="w-full"
                 />
               </UFormField>
 
@@ -621,6 +635,7 @@ watch(
                   :items="ZONAGE_OPTIONS"
                   value-key="value"
                   label-key="label"
+                  class="w-full"
                 />
               </UFormField>
             </div>
@@ -634,6 +649,7 @@ watch(
                   v-model="form.geojson_polygon"
                   :rows="5"
                   placeholder='{"type":"Polygon","coordinates":[[[lng,lat],[lng,lat],[lng,lat],[lng,lat]]]}'
+                  class="w-full"
                 />
                 <p v-if="errors.geojson_polygon" class="mt-1 text-xs text-red-600">
                   {{ errors.geojson_polygon }}
@@ -659,6 +675,7 @@ watch(
                   :disabled="form.price_on_request"
                   placeholder="Ex: 1000000"
                   :format-options="{ maximumFractionDigits: 0 }"
+                  class="w-full"
                 />
                 <p v-if="errors.price" class="mt-1 text-xs text-red-600">
                   {{ errors.price }}
@@ -684,20 +701,20 @@ watch(
             <ThemeACard title="Informations de contact">
               <div class="grid gap-4 md:grid-cols-2">
                 <UFormField label="Téléphone *" name="phone">
-                  <UInput v-model="form.phone" placeholder="Ex: 0612345678" />
+                  <UInput v-model="form.phone" placeholder="Ex: 0612345678" class="w-full" />
                   <p v-if="errors.phone" class="mt-1 text-xs text-red-600">
                     {{ errors.phone }}
                   </p>
                 </UFormField>
 
                 <UFormField label="WhatsApp (optionnel)" name="whatsapp">
-                  <UInput v-model="form.whatsapp" placeholder="Ex: 0612345678" />
+                  <UInput v-model="form.whatsapp" placeholder="Ex: 0612345678" class="w-full" />
                 </UFormField>
               </div>
 
               <div class="mt-4">
                 <UFormField label="Email (optionnel)" name="email">
-                  <UInput v-model="form.email" type="email" placeholder="Ex: contact@example.com" />
+                  <UInput v-model="form.email" type="email" placeholder="Ex: contact@example.com" class="w-full" />
                   <p v-if="errors.email" class="mt-1 text-xs text-red-600">
                     {{ errors.email }}
                   </p>
@@ -716,7 +733,7 @@ watch(
             </div>
 
             <UFormField label="Description *" name="description">
-              <UTextarea v-model="form.description" :rows="6" />
+              <UTextarea v-model="form.description" :rows="6" class="w-full" />
               <p v-if="errors.description" class="mt-1 text-xs text-red-600">
                 {{ errors.description }}
               </p>

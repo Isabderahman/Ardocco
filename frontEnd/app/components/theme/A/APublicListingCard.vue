@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { GeoJSONPolygon } from '~/types/models/geojson'
+
 const props = withDefaults(defineProps<{
   to: string
   title: string
@@ -6,6 +8,10 @@ const props = withDefaults(defineProps<{
   location: string
   price: string
   area: string
+  imageUrl?: string | null
+  lat?: number | null
+  lng?: number | null
+  geojsonPolygon?: GeoJSONPolygon | null
   showLimitedHint?: boolean
 }>(), {
   showLimitedHint: false
@@ -19,7 +25,24 @@ const props = withDefaults(defineProps<{
   >
     <!-- Image placeholder -->
     <div class="aspect-[4/3] bg-gray-200 relative">
-      <div class="absolute inset-0 flex items-center justify-center">
+      <img
+        v-if="props.imageUrl"
+        :src="props.imageUrl"
+        :alt="props.title"
+        class="absolute inset-0 h-full w-full object-cover"
+        loading="lazy"
+        decoding="async"
+      >
+
+      <MiniListingMap
+        v-else-if="props.geojsonPolygon || (props.lat != null && props.lng != null)"
+        :id="props.to"
+        :lat="props.lat ?? null"
+        :lng="props.lng ?? null"
+        :geojson-polygon="props.geojsonPolygon || null"
+      />
+
+      <div v-else class="absolute inset-0 flex items-center justify-center">
         <UIcon
           name="i-lucide-image"
           class="w-12 h-12 text-gray-400"

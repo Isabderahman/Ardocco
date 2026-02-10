@@ -1,3 +1,5 @@
+import type { GeoJSONPolygon } from '~/types/models/geojson'
+
 export type TerrainCard = {
   id: string
   title: string
@@ -6,6 +8,10 @@ export type TerrainCard = {
   price: string
   badge?: string
   to: string
+  imageUrl?: string | null
+  lat?: number | null
+  lng?: number | null
+  geojsonPolygon?: GeoJSONPolygon | null
 }
 
 export type TerrainFormState = {

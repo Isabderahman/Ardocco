@@ -23,4 +23,3 @@ export function normalizeBackendBaseUrl(raw: unknown): string {
 
   return `${scheme}://${normalized}`
 }
-

@@ -15,10 +15,8 @@ import type { FitBoundsOptions, GeoJSONFeature, ProvinceApiModel, ProvinceConfig
  * @returns {Object} Map state and methods
  */
 export function useProvinceMap(provinces: ProvinceConfig[] = []) {
-  // Get API URL from Nuxt runtime config
-  const config = useRuntimeConfig()
-  // Prefer calling Nuxt server proxy routes (SSR/dev-friendly) unless a public API base URL is provided.
-  const apiBaseUrl = String(config.public?.apiBaseUrl || '').trim() || '/api/backend'
+  // Always call Nuxt server proxy routes (SSR/dev-friendly, no CORS). Backend host is configured via `runtimeConfig.backendBaseUrl`.
+  const apiBaseUrl = '/api/backend'
 
   const loading = ref(false)
   const error = ref<string | null>(null)

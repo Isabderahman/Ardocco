@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import type { BackendResponse } from '~/types/models/api'
-import type { BackendListing } from '~/types/models/listing'
+import type {BackendResponse} from '~/types/models/api'
+import type {BackendListing} from '~/types/models/listing'
 
 definePageMeta({
   title: 'Détails du terrain'
 })
 
 const route = useRoute()
-const { token } = useAuth()
+const {token} = useAuth()
 
 const listingId = computed(() => String(route.params.id || ''))
 
@@ -15,7 +15,7 @@ const publicListingQuery = usePublicListing(listingId)
 
 const headers = computed(() => {
   const value = typeof token.value === 'string' ? token.value.trim() : ''
-  return value ? { Authorization: `Bearer ${value}` } : undefined
+  return value ? {Authorization: `Bearer ${value}`} : undefined
 })
 
 const {
@@ -37,10 +37,14 @@ watch(listingId, () => {
   privateError.value = undefined
 })
 
+// Fetch from private endpoint when:
+// 1. User is authenticated AND
+// 2. Public endpoint returned an error (404 for unpublished, 403 for private, etc.)
 const shouldFetchPrivate = computed(() => {
   if (!token.value) return false
-  const statusCode = Number((publicListingQuery.error.value as { statusCode?: number } | null)?.statusCode)
-  return statusCode === 404
+  // Trigger private fetch for any public endpoint error (not just 404)
+  // This handles draft listings, private listings, etc.
+  return publicListingQuery.error.value !== null && !publicListingQuery.pending.value
 })
 
 watch(
@@ -50,7 +54,7 @@ watch(
     if (privatePending.value) return
     void fetchPrivate()
   },
-  { immediate: true }
+  {immediate: true}
 )
 
 const privateListing = computed<BackendListing | null>(() => privateResponse.value?.data || null)
@@ -72,7 +76,7 @@ const {
 } = useContactRequestModal(listingId)
 
 // Favorites
-const { addToFavorites, removeFromFavorites, isFavorite } = useFavoriteListings()
+const {addToFavorites, removeFromFavorites, isFavorite} = useFavoriteListings()
 const isInFavorites = computed(() => listing.value ? isFavorite(listing.value.id) : false)
 
 const toggleFavorite = async () => {
@@ -140,14 +144,14 @@ const listingMarkers = computed(() => {
   <main class="min-h-screen bg-gray-50">
     <!-- Loading -->
     <div v-if="pending" class="flex items-center justify-center py-20">
-      <UIcon name="i-lucide-loader-2" class="w-8 h-8 animate-spin text-primary-500" />
+      <UIcon name="i-lucide-loader-2" class="w-8 h-8 animate-spin text-primary-500"/>
     </div>
 
     <!-- Error -->
     <div v-else-if="error || !listing" class="text-center py-20">
-      <UIcon name="i-lucide-alert-circle" class="w-12 h-12 mx-auto text-red-500 mb-4" />
+      <UIcon name="i-lucide-alert-circle" class="w-12 h-12 mx-auto text-red-500 mb-4"/>
       <p class="text-gray-600">Terrain introuvable.</p>
-      <UButton label="Retour à la liste" variant="outline" class="mt-4" to="/terrains" />
+      <UButton label="Retour à la liste" variant="outline" class="mt-4" to="/terrains"/>
     </div>
 
     <!-- Content -->
@@ -157,7 +161,7 @@ const listingMarkers = computed(() => {
         <UContainer class="py-4">
           <div class="flex items-center gap-2 text-sm text-gray-500 mb-4">
             <NuxtLink to="/terrains" class="hover:text-primary-600">Terrains</NuxtLink>
-            <UIcon name="i-lucide-chevron-right" class="w-4 h-4" />
+            <UIcon name="i-lucide-chevron-right" class="w-4 h-4"/>
             <span>{{ listing.reference }}</span>
           </div>
 
@@ -165,7 +169,7 @@ const listingMarkers = computed(() => {
             <div>
               <h1 class="text-2xl font-bold text-gray-900">{{ listing.title }}</h1>
               <p class="text-gray-600 mt-1 flex items-center gap-2">
-                <UIcon name="i-lucide-map-pin" class="w-4 h-4" />
+                <UIcon name="i-lucide-map-pin" class="w-4 h-4"/>
                 {{ listing.quartier || listing.commune?.name_fr || 'Localisation non spécifiée' }}
               </p>
             </div>
@@ -196,7 +200,7 @@ const listingMarkers = computed(() => {
             <div class="aspect-video overflow-hidden rounded-xl bg-gray-200">
               <template v-if="hasPhotos">
                 <div class="flex h-full w-full items-center justify-center">
-                  <UIcon name="i-lucide-image" class="w-16 h-16 text-gray-400" />
+                  <UIcon name="i-lucide-image" class="w-16 h-16 text-gray-400"/>
                 </div>
               </template>
 
@@ -217,7 +221,7 @@ const listingMarkers = computed(() => {
 
               <template v-else>
                 <div class="flex h-full w-full items-center justify-center">
-                  <UIcon name="i-lucide-image" class="w-16 h-16 text-gray-400" />
+                  <UIcon name="i-lucide-image" class="w-16 h-16 text-gray-400"/>
                 </div>
               </template>
             </div>
@@ -342,21 +346,56 @@ const listingMarkers = computed(() => {
             <!-- Limited access notice -->
             <div
               v-if="!hasFullAccess"
-              class="bg-yellow-50 border border-yellow-200 rounded-xl p-6 text-center"
+              class="bg-white border border-primary-200 rounded-2xl p-5 shadow-sm"
             >
-              <UIcon name="i-lucide-lock" class="w-12 h-12 mx-auto text-yellow-500 mb-4" />
-              <h3 class="text-lg font-semibold text-gray-900 mb-2">Accès limité</h3>
-              <p class="text-gray-600 mb-4">
-                Connectez-vous pour accéder aux détails complets :
-              </p>
-              <ul class="text-sm text-gray-500 mb-6 space-y-1">
-                <li>• Description complète</li>
-                <li>• Plans cadastraux</li>
-                <li>• Analyse financière & rentabilité</li>
-                <li>• Coordonnées du vendeur/agent</li>
+              <div class="flex items-start justify-between gap-4">
+                <div>
+                  <h3 class="text-lg font-semibold text-gray-900">Accès limité</h3>
+                  <p class="mt-1 text-sm text-gray-600">
+                    Connectez-vous pour débloquer les informations complètes.
+                  </p>
+                </div>
+
+                <span
+                  class="shrink-0 inline-flex items-center rounded-full bg-primary-50 text-primary-700 px-3 py-1 text-xs font-medium"
+                >
+      Verrouillé
+    </span>
+              </div>
+
+              <ul class="mt-4 space-y-2 text-sm text-gray-700">
+                <li class="flex gap-2">
+                  <span class="mt-1 h-1.5 w-1.5 rounded-full bg-gray-400"></span>
+                  <span>Description complète</span>
+                </li>
+                <li class="flex gap-2">
+                  <span class="mt-1 h-1.5 w-1.5 rounded-full bg-gray-400"></span>
+                  <span>Plans cadastraux</span>
+                </li>
+                <li class="flex gap-2">
+                  <span class="mt-1 h-1.5 w-1.5 rounded-full bg-gray-400"></span>
+                  <span>Analyse financière et rentabilité</span>
+                </li>
+                <li class="flex gap-2">
+                  <span class="mt-1 h-1.5 w-1.5 rounded-full bg-gray-400"></span>
+                  <span>Coordonnées du vendeur ou de l’agent</span>
+                </li>
               </ul>
-              <UButton label="Se connecter" color="primary" size="lg" to="/login" />
+
+              <div class="mt-5 flex flex-col gap-2 sm:flex-row sm:items-center">
+                <UButton
+                  label="Se connecter"
+                  color="primary"
+                  size="lg"
+                  to="/login"
+                  class="sm:w-auto w-full"
+                />
+                <p class="text-xs text-gray-500">
+                  Ça prend moins d’une minute.
+                </p>
+              </div>
             </div>
+
           </div>
 
           <!-- Right column (sidebar) -->
@@ -374,7 +413,7 @@ const listingMarkers = computed(() => {
                   <p class="text-sm text-gray-500 mb-2">Contact</p>
                   <div class="flex items-center gap-3">
                     <div class="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-                      <UIcon name="i-lucide-user" class="w-5 h-5 text-gray-500" />
+                      <UIcon name="i-lucide-user" class="w-5 h-5 text-gray-500"/>
                     </div>
                     <div>
                       <p class="font-medium text-gray-900">
@@ -424,7 +463,8 @@ const listingMarkers = computed(() => {
             </div>
 
             <!-- Map -->
-            <div v-if="hasPhotos && (selectedPolygon || (listingLat != null && listingLng != null))" class="bg-white rounded-xl overflow-hidden shadow-sm">
+            <div v-if="hasPhotos && (selectedPolygon || (listingLat != null && listingLng != null))"
+                 class="bg-white rounded-xl overflow-hidden shadow-sm">
               <div class="h-48 bg-gray-200 flex items-center justify-center">
                 <ClientOnly>
                   <CasablancaSettatMap
@@ -453,22 +493,22 @@ const listingMarkers = computed(() => {
           <h3 class="text-lg font-semibold text-gray-900 mb-4">Contacter le vendeur</h3>
 
           <div v-if="contactSuccess" class="text-center py-8">
-            <UIcon name="i-lucide-check-circle" class="w-16 h-16 mx-auto text-green-500 mb-4" />
+            <UIcon name="i-lucide-check-circle" class="w-16 h-16 mx-auto text-green-500 mb-4"/>
             <p class="text-gray-600">Votre message a été envoyé avec succès !</p>
           </div>
 
           <ThemeAForm v-else :state="contactForm" @submit="submitContact">
             <div class="space-y-4">
               <UFormField label="Nom" name="name">
-                <UInput v-model="contactForm.name" required size="md" class="w-full" />
+                <UInput v-model="contactForm.name" required size="md" class="w-full"/>
               </UFormField>
 
               <UFormField label="Email" name="email">
-                <UInput v-model="contactForm.email" type="email" required size="md" class="w-full" />
+                <UInput v-model="contactForm.email" type="email" required size="md" class="w-full"/>
               </UFormField>
 
               <UFormField label="Téléphone" name="phone">
-                <UInput v-model="contactForm.phone" type="tel" size="md" class="w-full" />
+                <UInput v-model="contactForm.phone" type="tel" size="md" class="w-full"/>
               </UFormField>
 
               <UFormField label="Message" name="message">

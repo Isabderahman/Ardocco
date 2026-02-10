@@ -60,7 +60,9 @@ const props = withDefaults(defineProps<{
   height?: number | string
   mapId?: string
   zoom?: number
+  interactive?: boolean
   showLegend?: boolean
+  showProvinceBoundaries?: boolean
   showControls?: boolean
   showZoomControl?: boolean
   scrollWheelZoom?: boolean
@@ -78,7 +80,9 @@ const props = withDefaults(defineProps<{
 }>(), {
   height: 600,
   zoom: 9,
+  interactive: true,
   showLegend: true,
+  showProvinceBoundaries: true,
   showControls: true,
   showZoomControl: true,
   scrollWheelZoom: true,
@@ -113,7 +117,7 @@ let L: LeafletNamespace | null = null
 let markersLayer: ReturnType<LeafletNamespace['layerGroup']> | null = null
 let selectedPolygonLayer: ReturnType<LeafletNamespace['geoJSON']> | null = null
 let enabledProvinceCodes = new Set<string>()
-let markerById = new Map<string, { marker: CasablancaSettatMapMarker, layer: unknown }>()
+const markerById = new Map<string, { marker: CasablancaSettatMapMarker, layer: unknown }>()
 let moveEndHandler: (() => void) | null = null
 let canEmitMoveEvents = false
 let suppressMoveEvents = false
@@ -402,9 +406,21 @@ function initializeMap(leaflet: LeafletNamespace): LeafletMap {
   L = leaflet
   enabledProvinceCodes = new Set(PROVINCES.map(p => p.code))
 
+  const interactive = !!props.interactive
+  const zoomControl = interactive && !!props.showZoomControl
+  const scrollWheelZoom = interactive && !!props.scrollWheelZoom
+
   // Create map centered on Casablanca-Settat region
   map = leaflet
-    .map(resolvedMapId.value, { zoomControl: props.showZoomControl, scrollWheelZoom: props.scrollWheelZoom })
+    .map(resolvedMapId.value, {
+      zoomControl,
+      scrollWheelZoom,
+      dragging: interactive,
+      touchZoom: interactive,
+      doubleClickZoom: interactive,
+      boxZoom: interactive,
+      keyboard: interactive
+    })
     .setView([33.2316, -7.5389], props.zoom)
 
   // Add OpenStreetMap tiles
@@ -494,6 +510,12 @@ function activeProvinceConfigs() {
 async function reloadActiveProvinces(options?: { fitBounds?: boolean }) {
   if (!map || !L) return
 
+  if (!props.showProvinceBoundaries) {
+    syncMarkers()
+    syncSelectedPolygon()
+    return
+  }
+
   clearProvinceBoundaries(L, map)
   const active = activeProvinceConfigs()
   if (!active.length) return
@@ -510,6 +532,7 @@ async function reloadActiveProvinces(options?: { fitBounds?: boolean }) {
  */
 async function handleReloadBoundaries() {
   if (!map || !L) return
+  if (!props.showProvinceBoundaries) return
 
   await reloadActiveProvinces({ fitBounds: props.fitToRegion })
 }
@@ -526,7 +549,11 @@ onMounted(() => {
         mapInstance.invalidateSize()
       })
       syncMarkers()
-      loadProvinceBoundariesByRegion(leaflet, mapInstance, REGION_CODE, activeProvinceConfigs(), { fitBounds: props.fitToRegion })
+      const boundariesPromise = props.showProvinceBoundaries
+        ? loadProvinceBoundariesByRegion(leaflet, mapInstance, REGION_CODE, activeProvinceConfigs(), { fitBounds: props.fitToRegion })
+        : Promise.resolve()
+
+      boundariesPromise
         .finally(() => {
           canEmitMoveEvents = true
           syncMarkers()

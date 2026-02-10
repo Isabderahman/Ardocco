@@ -21,6 +21,24 @@ const emit = defineEmits<{
   (e: 'select', id: string): void
 }>()
 
+function numeric(value: unknown): number | null {
+  const n = Number(value)
+  return Number.isFinite(n) ? n : null
+}
+
+function coverPhotoUrl(listing: BackendListing): string | null {
+  const docs = listing.documents
+  if (!Array.isArray(docs)) return null
+
+  const photo = docs.find((doc) => {
+    const obj = doc as { document_type?: unknown, file_path?: unknown, is_public?: unknown }
+    return obj?.document_type === 'photos' && typeof obj.file_path === 'string'
+  }) as { file_path?: string } | undefined
+
+  const path = String(photo?.file_path || '').replace(/^\/+/, '')
+  return path ? `/storage/${path}` : null
+}
+
 function terrainTypeLabel(value: string | null | undefined) {
   if (!value) return 'Non spécifié'
   const found = props.terrainTypes.find(t => t.value === value)
@@ -69,6 +87,11 @@ const location = computed(() => {
 const price = computed(() => formatCurrency(props.listing.prix_demande))
 const area = computed(() => formatArea(props.listing.superficie))
 
+const lat = computed(() => numeric(props.listing.latitude))
+const lng = computed(() => numeric(props.listing.longitude))
+const hasMapData = computed(() => !!props.listing.geojson_polygon || (lat.value != null && lng.value != null))
+const imageUrl = computed(() => coverPhotoUrl(props.listing))
+
 function onSelect() {
   emit('select', props.listing.id)
 }
@@ -90,11 +113,33 @@ function onFocus() {
     @focus="onFocus"
   >
     <div class="flex gap-3 p-3">
-      <div class="h-40 w-35 shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-primary-50 to-primary-100 ring-1 ring-default grid place-items-center">
-        <UIcon
-          name="i-lucide-image"
-          class="size-6 text-primary-400"
+      <div class="relative h-40 w-35 shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-primary-50 to-primary-100 ring-1 ring-default">
+        <img
+          v-if="imageUrl"
+          :src="imageUrl"
+          :alt="props.listing.title"
+          class="absolute inset-0 h-full w-full object-cover"
+          loading="lazy"
+          decoding="async"
+        >
+
+        <MiniListingMap
+          v-else-if="hasMapData"
+          :id="props.listing.id"
+          :lat="lat"
+          :lng="lng"
+          :geojson-polygon="props.listing.geojson_polygon || null"
         />
+
+        <div
+          v-else
+          class="absolute inset-0 grid place-items-center"
+        >
+          <UIcon
+            name="i-lucide-image"
+            class="size-6 text-primary-400"
+          />
+        </div>
       </div>
 
       <div class="min-w-0 flex-1">

@@ -1,31 +1,11 @@
-import { getCookie, getHeader, getQuery, proxyRequest } from 'h3'
+import { getCookie, getHeader, proxyRequest } from 'h3'
 import { normalizeBackendBaseUrl } from '~~/server/utils/backendBaseUrl'
 
 export default defineEventHandler(async (event) => {
-  const rawPath = event.context.params?.path
-  const path = Array.isArray(rawPath) ? rawPath.join('/') : String(rawPath || '')
-  if (!path) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: 'Missing backend path.'
-    })
-  }
-
   const config = useRuntimeConfig()
   const backendBaseUrl = normalizeBackendBaseUrl(config.backendBaseUrl || 'http://localhost:8000')
 
-  const url = new URL(`/api/${path}`, backendBaseUrl)
-
-  const query = getQuery(event)
-  for (const [key, value] of Object.entries(query)) {
-    if (Array.isArray(value)) {
-      value.forEach(v => url.searchParams.append(key, String(v)))
-      continue
-    }
-
-    if (value === undefined || value === null) continue
-    url.searchParams.set(key, String(value))
-  }
+  const url = new URL('/api/listings', backendBaseUrl)
 
   const headers: Record<string, string> = { accept: 'application/json' }
 

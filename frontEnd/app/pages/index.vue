@@ -224,7 +224,7 @@
           />
         </div>
 
-        <div class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <ThemeATerrainCard
             v-for="t in featuredTerrains"
             :key="t.id"
@@ -234,6 +234,10 @@
             :price="t.price"
             :badge="t.badge"
             :to="t.to"
+            :image-url="t.imageUrl"
+            :lat="t.lat"
+            :lng="t.lng"
+            :geojson-polygon="t.geojsonPolygon"
           />
         </div>
       </UContainer>
@@ -358,6 +362,19 @@ function numeric(value: unknown): number | null {
   return Number.isFinite(n) ? n : null
 }
 
+function coverPhotoUrl(listing: { documents?: unknown } | null | undefined): string | null {
+  const docs = listing && (listing as { documents?: unknown }).documents
+  if (!Array.isArray(docs)) return null
+
+  const photo = docs.find((doc) => {
+    const obj = doc as { document_type?: unknown, file_path?: unknown }
+    return obj?.document_type === 'photos' && typeof obj.file_path === 'string'
+  }) as { file_path?: string } | undefined
+
+  const path = String(photo?.file_path || '').replace(/^\/+/, '')
+  return path ? `/storage/${path}` : null
+}
+
 function formatPrice(price: number | string | null | undefined) {
   const numPrice = Number(price)
   if (!Number.isFinite(numPrice) || numPrice <= 0) return '—'
@@ -415,6 +432,9 @@ const featuredTerrains = computed<TerrainCard[]>(() => {
     const superficieLabel = superficie != null ? `${superficie.toLocaleString('fr-MA', { maximumFractionDigits: 0 })} m²` : null
     const typeLabel = listing.type_terrain ? String(listing.type_terrain) : null
 
+    const lat = numeric(listing.latitude)
+    const lng = numeric(listing.longitude)
+
     return {
       id: listing.id,
       title: listing.title,
@@ -422,7 +442,11 @@ const featuredTerrains = computed<TerrainCard[]>(() => {
       location,
       price: formatPrice(listing.prix_demande),
       badge: 'Vedette',
-      to: `/terrains/${listing.id}`
+      to: `/terrains/${listing.id}`,
+      imageUrl: coverPhotoUrl(listing),
+      lat,
+      lng,
+      geojsonPolygon: listing.geojson_polygon ?? null
     }
   })
 })

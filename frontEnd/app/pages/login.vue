@@ -108,6 +108,18 @@ async function onSubmit() {
               class="rounded-full justify-center w-1/2"
             />
             </div>
+
+            <div class="text-center pt-4">
+              <p class="text-sm text-gray-600 dark:text-gray-400">
+                Pas encore de compte?
+                <NuxtLink
+                  to="/signup"
+                  class="text-primary-600 dark:text-primary-400 hover:underline font-medium"
+                >
+                  S'inscrire
+                </NuxtLink>
+              </p>
+            </div>
           </div>
         </ThemeAForm>
       </ThemeACard>

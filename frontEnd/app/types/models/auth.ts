@@ -8,6 +8,9 @@ export type AuthUser = {
   last_name?: string | null
   phone?: string | null
   company_name?: string | null
+  address?: string | null
+  city?: string | null
+  cin?: string | null
   is_verified?: boolean
   is_active?: boolean
 }
@@ -29,6 +32,19 @@ export type RegisterData = {
   last_name: string
   phone?: string
   company_name?: string
+  address?: string
+  city?: string
+  cin?: string
+  device_name?: string
+}
+
+export type RegisterResponse = {
+  success: boolean
+  message?: string
+  account_status?: 'pending_contract' | 'pending_approval' | 'active'
+  token_type?: string
+  token?: string
+  user?: Partial<AuthUser> & { account_status?: string }
 }
 
 export const ROLE_LABELS: Record<UserRole, string> = {
