@@ -141,7 +141,8 @@ class Listing extends Model
 
     public function scopeAvailable($query)
     {
-        return $query->whereIn('status', ['publie', 'valide']);
+        // Public availability: only published listings should be visible to visitors.
+        return $query->where('status', 'publie');
     }
 
     public function scopeInRegion($query, $regionId)

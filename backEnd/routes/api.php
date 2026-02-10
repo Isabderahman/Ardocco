@@ -44,6 +44,8 @@ Route::prefix('auth')->name('auth.')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/me', [AuthController::class, 'me'])->name('me');
         Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+        Route::put('/profile', [AuthController::class, 'updateProfile'])->name('profile.update');
+        Route::put('/password', [AuthController::class, 'updatePassword'])->name('password.update');
 
         // Admin: Account approval
         Route::post('/users/{user}/approve', [AuthController::class, 'approveAccount'])
@@ -184,6 +186,8 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->name('admin.
 
     // Listing Management
     Route::get('/listings/pending', [AdminController::class, 'pendingListings'])->name('listings.pending');
+    Route::post('/listings/{listing}/approve', [AdminController::class, 'approveListing'])->name('listings.approve');
+    Route::post('/listings/{listing}/reject', [AdminController::class, 'rejectListing'])->name('listings.reject');
     Route::post('/listings/{listing}/toggle-featured', [AdminController::class, 'toggleFeatured'])->name('listings.toggle-featured');
     Route::delete('/listings/{listing}', [AdminController::class, 'deleteListing'])->name('listings.delete');
 

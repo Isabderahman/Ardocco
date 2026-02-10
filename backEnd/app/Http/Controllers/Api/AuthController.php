@@ -25,7 +25,7 @@ class AuthController extends Controller
         $validated = $request->validate([
             'email' => 'required|string|email|max:255|unique:users,email',
             'password' => 'required|string|min:8|confirmed',
-            'role' => 'required|in:acheteur,vendeur,agent,expert',
+            'role' => 'required|in:acheteur,vendeur,agent,expert,promoteur',
             'first_name' => 'required|string|max:100',
             'last_name' => 'required|string|max:100',
             'phone' => 'nullable|string|max:20',
@@ -37,7 +37,7 @@ class AuthController extends Controller
         ]);
 
         // Roles that require contract signing and admin approval
-        $requiresApproval = in_array($validated['role'], ['acheteur', 'vendeur']);
+        $requiresApproval = in_array($validated['role'], ['acheteur', 'vendeur', 'promoteur']);
 
         $user = User::create([
             'email' => strtolower($validated['email']),
@@ -58,9 +58,15 @@ class AuthController extends Controller
 
         // If requires approval, create contract and send email
         if ($requiresApproval) {
+            $contractType = match ($validated['role']) {
+                'vendeur' => 'vendeur_agreement',
+                'promoteur' => 'promoteur_agreement',
+                default => 'acheteur_agreement',
+            };
+
             $contract = Contract::create([
                 'user_id' => $user->id,
-                'contract_type' => $validated['role'] === 'vendeur' ? 'vendeur_agreement' : 'acheteur_agreement',
+                'contract_type' => $contractType,
                 'status' => 'pending',
                 'terms' => $this->getContractTerms($validated['role']),
             ]);
@@ -346,6 +352,18 @@ class AuthController extends Controller
             ]);
         }
 
+        if ($role === 'promoteur') {
+            return array_merge($baseTerms, [
+                'type' => 'promoteur_agreement',
+                'terms' => [
+                    'Accès aux informations détaillées des terrains disponibles',
+                    'Possibilité de demander l\'accès aux annonces des vendeurs',
+                    'Engagement de confidentialité des données',
+                    'Respect des délais et procédures d\'investissement',
+                ],
+            ]);
+        }
+
         return array_merge($baseTerms, [
             'type' => 'acheteur_agreement',
             'terms' => [
@@ -412,6 +430,59 @@ class AuthController extends Controller
         return response()->json([
             'success' => true,
             'user' => $request->user(),
+        ]);
+    }
+
+    /**
+     * Update authenticated user's profile
+     */
+    public function updateProfile(Request $request)
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'first_name' => 'sometimes|string|max:100',
+            'last_name' => 'sometimes|string|max:100',
+            'phone' => 'nullable|string|max:20',
+            'company_name' => 'nullable|string|max:255',
+            'address' => 'nullable|string|max:500',
+            'city' => 'nullable|string|max:100',
+            'cin' => 'nullable|string|max:20',
+        ]);
+
+        $user->update($validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Profil mis à jour avec succès.',
+            'user' => $user->fresh(),
+        ]);
+    }
+
+    /**
+     * Update authenticated user's password
+     */
+    public function updatePassword(Request $request)
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'current_password' => 'required|string',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        if (!Hash::check($validated['current_password'], $user->password)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Le mot de passe actuel est incorrect.',
+            ], 422);
+        }
+
+        $user->update(['password' => $validated['password']]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Mot de passe mis à jour avec succès.',
         ]);
     }
 

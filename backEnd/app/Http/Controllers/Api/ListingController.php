@@ -34,6 +34,12 @@ class ListingController extends Controller
                 'commune.province.region',
                 'owner',
                 'agent',
+                'documents' => function ($q) {
+                    $q
+                        ->where('document_type', 'photos')
+                        ->orderByDesc('created_at')
+                        ->limit(3);
+                },
             ])
             ->orderByDesc('created_at');
 
@@ -151,7 +157,7 @@ class ListingController extends Controller
             }
         }
 
-        $superficieUnknown = (bool) ($validated['superficie_unknown'] ?? false);
+        $superficieUnknown = filter_var($validated['superficie_unknown'] ?? false, FILTER_VALIDATE_BOOLEAN);
         $superficieValue = $validated['superficie'] ?? $validated['superficie_m2'] ?? null;
         $superficie = $superficieValue !== null ? (float) $superficieValue : null;
 
@@ -161,7 +167,7 @@ class ListingController extends Controller
             ]);
         }
 
-        $priceOnRequest = (bool) ($validated['price_on_request'] ?? false);
+        $priceOnRequest = filter_var($validated['price_on_request'] ?? false, FILTER_VALIDATE_BOOLEAN);
         $priceValue = $validated['prix_demande'] ?? $validated['price'] ?? null;
         $prixDemande = $priceValue !== null ? (float) $priceValue : null;
 
@@ -171,7 +177,7 @@ class ListingController extends Controller
             ]);
         }
 
-        $hasTitreFoncier = (bool) ($validated['titre_foncier'] ?? false);
+        $hasTitreFoncier = filter_var($validated['titre_foncier'] ?? false, FILTER_VALIDATE_BOOLEAN);
         $referenceTf = isset($validated['reference_tf']) ? trim((string) $validated['reference_tf']) : '';
         if ($hasTitreFoncier && $referenceTf === '') {
             throw ValidationException::withMessages([
@@ -226,16 +232,17 @@ class ListingController extends Controller
             'prix_demande' => $prixDemandeForCalc,
             'price_on_request' => $priceOnRequest,
             'prix_par_m2' => $prixParM2,
-            'show_price_per_m2' => (bool) ($validated['price_per_m2'] ?? false),
-            'negotiable' => (bool) ($validated['negotiable'] ?? false),
+            'show_price_per_m2' => filter_var($validated['price_per_m2'] ?? false, FILTER_VALIDATE_BOOLEAN),
+            'negotiable' => filter_var($validated['negotiable'] ?? false, FILTER_VALIDATE_BOOLEAN),
             'type_terrain' => $validated['type_terrain'],
             'status' => 'brouillon',
             'titre_foncier' => $hasTitreFoncier ? $referenceTf : null,
-            'visibility' => $validated['visibility'] ?? 'public',
+            // New listings stay private until reviewed/published.
+            'visibility' => 'private',
             'zonage' => $validated['zonage'] ?? null,
             'perimetre' => $perimetre,
-            'is_exclusive' => (bool) ($validated['is_exclusive'] ?? false),
-            'is_urgent' => (bool) ($validated['is_urgent'] ?? false),
+            'is_exclusive' => filter_var($validated['is_exclusive'] ?? false, FILTER_VALIDATE_BOOLEAN),
+            'is_urgent' => filter_var($validated['is_urgent'] ?? false, FILTER_VALIDATE_BOOLEAN),
             'views_count' => 0,
         ]);
 
@@ -402,7 +409,8 @@ class ListingController extends Controller
             ], 422);
         }
 
-        $missing = $this->missingRequiredData($listing);
+        // Submission only requires the base listing info. Expertise fiches can be completed later by experts.
+        $missing = $this->missingRequiredSubmissionData($listing);
         if (!empty($missing)) {
             return response()->json([
                 'success' => false,
@@ -416,6 +424,7 @@ class ListingController extends Controller
             'submitted_at' => now(),
             'validated_at' => null,
             'published_at' => null,
+            'visibility' => 'private',
         ])->save();
 
         $this->notifyAgentsListingSubmitted($listing, $user);
@@ -578,6 +587,36 @@ class ListingController extends Controller
         }
         if (!$listing->ficheJuridique()->exists()) {
             $missing[] = 'fiche_juridique';
+        }
+
+        return $missing;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function missingRequiredSubmissionData(Listing $listing): array
+    {
+        $missing = [];
+
+        if (!is_string($listing->title) || trim($listing->title) === '') {
+            $missing[] = 'title';
+        }
+
+        if (!is_string($listing->description) || trim($listing->description ?? '') === '') {
+            $missing[] = 'description';
+        }
+
+        if (!$listing->commune_id) {
+            $missing[] = 'commune_id';
+        }
+
+        if (!$listing->type_terrain) {
+            $missing[] = 'type_terrain';
+        }
+
+        if (!$listing->contact_phone) {
+            $missing[] = 'contact_phone';
         }
 
         return $missing;

@@ -218,6 +218,7 @@ class AgentListingController extends Controller
             'status' => 'publie',
             'published_at' => $now,
             'validated_at' => $listing->validated_at ?? $now,
+            'visibility' => 'public',
         ])->save();
 
         Notification::create([
@@ -280,4 +281,3 @@ class AgentListingController extends Controller
             ]);
     }
 }
-

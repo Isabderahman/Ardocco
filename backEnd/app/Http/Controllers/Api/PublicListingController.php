@@ -53,10 +53,17 @@ class PublicListingController extends Controller
         $isAuthenticated = $request->user() !== null;
 
         $query = Listing::query()
-            ->available()
+            ->published()
             ->where('visibility', 'public')
             ->with([
                 'commune.province.region',
+                'documents' => function ($q) {
+                    $q->public()
+                        ->byType('photos')
+                        ->select(['id', 'listing_id', 'document_type', 'file_path', 'is_public'])
+                        ->orderByDesc('created_at')
+                        ->limit(1);
+                },
             ])
             ->orderByDesc('published_at')
             ->orderByDesc('created_at');
@@ -140,7 +147,7 @@ class PublicListingController extends Controller
 
     public function show(Request $request, Listing $listing)
     {
-        if ($listing->visibility !== 'public' || !in_array($listing->status, ['publie', 'valide'], true)) {
+        if ($listing->visibility !== 'public' || $listing->status !== 'publie') {
             return response()->json([
                 'success' => false,
                 'message' => 'Not found.',
@@ -154,7 +161,16 @@ class PublicListingController extends Controller
         $listing->increment('views_count');
 
         // Load relations based on authentication
-        $relations = ['commune.province.region'];
+        $relations = [
+            'commune.province.region',
+            'documents' => function ($query) {
+                $query->where('is_public', true)
+                    ->where('document_type', 'photos')
+                    ->select(['id', 'listing_id', 'document_type', 'file_path', 'is_public'])
+                    ->orderByDesc('created_at')
+                    ->limit(3);
+            },
+        ];
 
         if ($isAuthenticated && $user->canAccessFullListingDetails()) {
             // Full access for authenticated users
@@ -184,6 +200,7 @@ class PublicListingController extends Controller
         // Return only visitor fields
         $limitedData = $listing->only($this->visitorFields);
         $limitedData['commune'] = $listing->commune;
+        $limitedData['documents'] = $listing->documents;
 
         return response()->json([
             'success' => true,

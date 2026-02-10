@@ -161,6 +161,86 @@ class AdminController extends Controller
     }
 
     /**
+     * Approve & publish a listing (make it public)
+     */
+    public function approveListing(Request $request, Listing $listing)
+    {
+        if (!in_array($listing->status, ['soumis', 'valide'], true)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Listing cannot be approved in current status.',
+            ], 422);
+        }
+
+        $now = now();
+
+        $listing->forceFill([
+            'status' => 'publie',
+            'visibility' => 'public',
+            'published_at' => $now,
+            'validated_at' => $listing->validated_at ?? $now,
+            'submitted_at' => $listing->submitted_at ?? $now,
+        ])->save();
+
+        if ($listing->owner_id) {
+            Notification::create([
+                'user_id' => $listing->owner_id,
+                'type' => 'listing_published',
+                'title' => 'Annonce publiée',
+                'message' => "Votre annonce {$listing->reference} est maintenant publiée.",
+                'link' => "/terrains/{$listing->id}",
+                'is_read' => false,
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Listing approved.',
+            'data' => $listing,
+        ]);
+    }
+
+    /**
+     * Reject a listing (send back to draft with reason)
+     */
+    public function rejectListing(Request $request, Listing $listing)
+    {
+        if (!in_array($listing->status, ['soumis', 'valide'], true)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Listing cannot be rejected in current status.',
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'reason' => 'required|string|max:1000',
+        ]);
+
+        $listing->forceFill([
+            'status' => 'refuse',
+            'validated_at' => null,
+            'published_at' => null,
+        ])->save();
+
+        if ($listing->owner_id) {
+            Notification::create([
+                'user_id' => $listing->owner_id,
+                'type' => 'listing_rejected',
+                'title' => 'Annonce refusée',
+                'message' => "Votre annonce {$listing->reference} a été refusée. Raison: {$validated['reason']}",
+                'link' => "/terrains/{$listing->id}",
+                'is_read' => false,
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Listing rejected.',
+            'data' => $listing,
+        ]);
+    }
+
+    /**
      * Force delete a listing
      */
     public function deleteListing(Listing $listing)
