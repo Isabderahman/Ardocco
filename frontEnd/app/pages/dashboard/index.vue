@@ -134,13 +134,13 @@ function coverPhotoUrl(listing: BackendListing): string | null {
     </div>
 
     <!-- Refused Listings Alert -->
-    <div v-if="stats.refused > 0" class="bg-error/10 border border-error/20 rounded-xl p-4">
+    <div v-if="stats.refused > 0" class=" border-2 border-error rounded-xl p-4 boxshadow-sm">
       <div class="flex items-start gap-3">
-        <UIcon name="i-lucide-alert-triangle" class="size-5 text-error shrink-0 mt-0.5" />
+        <UIcon name="i-lucide-alert-triangle" class="size-10 text-error shrink-0 mt-0.5" />
         <div>
-          <p class="font-medium text-highlighted">{{ stats.refused }} annonce(s) refusee(s)</p>
-          <p class="text-sm text-muted mt-1">
-            Certaines de vos annonces ont ete refusees par l'administrateur. Consultez les details et corrigez les problemes pour les soumettre a nouveau.
+          <p class="font-medium text-highlighted">{{ stats.refused }} annonce(s) refusée(s)</p>
+          <p class="text-sm  text-muted mt-1">
+            Certaines de vos annonces ont ete refusées par l'administrateur. Consultez les details et corrigez les problemes pour les soumettre a nouveau.
           </p>
         </div>
       </div>

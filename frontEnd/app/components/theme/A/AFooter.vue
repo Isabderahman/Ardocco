@@ -64,7 +64,22 @@ const currentYear = new Date().getFullYear()
         <!-- Logo and Contact Section -->
         <div class="lg:col-span-1">
           <div class="mb-6 flex items-center gap-2">
-            <AppLogo variant="full" class="h-8 w-auto" />
+            <img
+              src="/whiteIcon.png"
+              alt="ARDOCCO"
+              class="h-9 w-9"
+              loading="lazy"
+              decoding="async"
+              draggable="false"
+            >
+            <img
+              src="/whitelogoVertical.png"
+              alt="ARDOCCO"
+              class="h-10 w-auto"
+              loading="lazy"
+              decoding="async"
+              draggable="false"
+            >
           </div>
 
           <div class="space-y-3">
