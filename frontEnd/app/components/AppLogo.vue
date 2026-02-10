@@ -10,7 +10,7 @@ const props = withDefaults(defineProps<{
 })
 
 const src = computed(() => {
-  if (props.variant === 'mark') return '/favicon.ico'
+  if (props.variant === 'mark') return '/whiteIcon.png'
   return '/3-04.png'
 })
 

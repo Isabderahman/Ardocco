@@ -67,7 +67,7 @@ const currentYear = new Date().getFullYear()
             <img
               src="/whitelogoVertical.png"
               alt="ARDOCCO"
-              class="h-10 w-auto"
+              class="h-15 w-auto"
               loading="lazy"
               decoding="async"
               draggable="false"
