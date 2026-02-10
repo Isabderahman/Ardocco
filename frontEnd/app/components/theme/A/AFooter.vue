@@ -65,14 +65,6 @@ const currentYear = new Date().getFullYear()
         <div class="lg:col-span-1">
           <div class="mb-6 flex items-center gap-2">
             <img
-              src="/whiteIcon.png"
-              alt="ARDOCCO"
-              class="h-9 w-9"
-              loading="lazy"
-              decoding="async"
-              draggable="false"
-            >
-            <img
               src="/whitelogoVertical.png"
               alt="ARDOCCO"
               class="h-10 w-auto"
