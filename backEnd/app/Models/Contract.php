@@ -18,6 +18,7 @@ class Contract extends Model
         'expires_at',
         'document_url',
         'terms',
+        'signature',
     ];
 
     protected $casts = [

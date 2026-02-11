@@ -36,8 +36,8 @@ class AuthController extends Controller
             'device_name' => 'nullable|string|max:255',
         ]);
 
-        // Roles that require contract signing and admin approval
-        $requiresApproval = in_array($validated['role'], ['acheteur', 'vendeur', 'promoteur']);
+        // TODO: Re-enable contract verification flow later
+        // For now, all accounts are active immediately (skip email verification)
 
         $user = User::create([
             'email' => strtolower($validated['email']),
@@ -50,42 +50,12 @@ class AuthController extends Controller
             'address' => $validated['address'] ?? null,
             'city' => $validated['city'] ?? null,
             'cin' => $validated['cin'] ?? null,
-            'is_verified' => false,
-            'is_active' => !$requiresApproval, // Only active immediately if agent/expert
-            'account_status' => $requiresApproval ? 'pending_contract' : 'active',
-            'contract_token' => $requiresApproval ? Str::random(64) : null,
+            'is_verified' => true,
+            'is_active' => true,
+            'account_status' => 'active',
         ]);
 
-        // If requires approval, create contract and send email
-        if ($requiresApproval) {
-            $contractType = match ($validated['role']) {
-                'vendeur' => 'vendeur_agreement',
-                'promoteur' => 'promoteur_agreement',
-                default => 'acheteur_agreement',
-            };
-
-            $contract = Contract::create([
-                'user_id' => $user->id,
-                'contract_type' => $contractType,
-                'status' => 'pending',
-                'terms' => $this->getContractTerms($validated['role']),
-            ]);
-
-            // Send contract email
-            $this->sendContractEmail($user, $contract);
-
-            // Notify admins
-            $this->notifyAdminsNewRegistration($user);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Compte créé. Veuillez vérifier votre email pour signer le contrat.',
-                'account_status' => 'pending_contract',
-                'user' => $user->only(['id', 'email', 'first_name', 'last_name', 'role', 'account_status']),
-            ], 201);
-        }
-
-        // For agent/expert, create token immediately
+        // Create token immediately for all users
         $tokenName = $validated['device_name'] ?? ($request->userAgent() ?: 'api');
         $token = $user->createToken($tokenName)->plainTextToken;
 

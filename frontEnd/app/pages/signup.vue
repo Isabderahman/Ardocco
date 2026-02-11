@@ -64,6 +64,12 @@ async function onSubmit() {
       cin: state.cin || undefined
     })
 
+    // If token returned, user is logged in - redirect to dashboard
+    if (res.token) {
+      navigateTo('/dashboard')
+      return
+    }
+
     successMessage.value = res.message || 'Inscription reussie.'
     step.value = 'success'
   } catch (err) {
