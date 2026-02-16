@@ -34,10 +34,18 @@ function normalizeExternalUrl(value: unknown): string | null {
 }
 
 function resolveDashboardBase(): string | null {
+  // 1. Check explicit config first
   const external = normalizeExternalUrl(config.public.dashboardUrl)
   if (external) return external
 
   const host = requestUrl.hostname
+
+  // 2. Production: ardocco.com -> app.ardocco.com
+  if (host === 'ardocco.com' || host === 'www.ardocco.com') {
+    return 'https://app.ardocco.com'
+  }
+
+  // 3. Local development fallback
   if (host === 'localhost' || host === '127.0.0.1') {
     const protocol = requestUrl.protocol || 'http:'
     return `${protocol}//${host}:8002`

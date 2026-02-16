@@ -57,18 +57,23 @@ export type FicheJuridique = {
 export type EtudeInvestissement = {
   id: string
   listing_id: string
+  created_by?: string | null
   titre_projet: string | null
   type_projet: string | null
+  nombre_sous_sols: number | null
+  nombre_etages: number | null
   localisation: string | null
   version: string | null
   status: 'draft' | 'pending_review' | 'approved' | 'rejected'
   generated_by_ai: boolean
+  taux_immatriculation: number | null
   superficie_terrain: number | null
   prix_terrain_m2: number | null
   prix_terrain_total: number | null
   frais_immatriculation: number | null
   surface_plancher_total: number | null
   surfaces_par_niveau: Record<string, number> | null
+  surfaces_vendables: Record<string, { usage: string; surface: number }> | null
   cout_gros_oeuvres_m2: number | null
   cout_finition_m2: number | null
   amenagement_divers: number | null
@@ -88,9 +93,15 @@ export type EtudeInvestissement = {
   resultat_brute: number | null
   ratio: number | null
   ai_notes: string | null
+  ai_extracted_data: Record<string, unknown> | null
+  plans: string[] | null
   pdf_path: string | null
+  pdf_generated_at: string | null
+  review_notes: string | null
+  reviewed_by?: string | null
   reviewed_at: string | null
   created_at: string | null
+  updated_at?: string | null
 }
 
 export type ListingOwner = {
