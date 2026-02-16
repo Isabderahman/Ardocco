@@ -33,8 +33,8 @@ load_env() {
 
 load_env
 
-if [[ -z "${FRONTEND_DOMAIN:-}" || -z "${API_DOMAIN:-}" || -z "${AI_DOMAIN:-}" ]]; then
-  echo "Missing required domains in deploy/.env (FRONTEND_DOMAIN, API_DOMAIN, AI_DOMAIN)." >&2
+if [[ -z "${FRONTEND_DOMAIN:-}" || -z "${API_DOMAIN:-}" || -z "${AI_DOMAIN:-}" || -z "${APP_DOMAIN:-}" ]]; then
+  echo "Missing required domains in deploy/.env (FRONTEND_DOMAIN, API_DOMAIN, AI_DOMAIN, APP_DOMAIN)." >&2
   exit 1
 fi
 
@@ -47,6 +47,7 @@ echo "Initializing Let's Encrypt certificates..."
 echo "- ${FRONTEND_DOMAIN}"
 echo "- ${API_DOMAIN}"
 echo "- ${AI_DOMAIN}"
+echo "- ${APP_DOMAIN}"
 
 mkdir -p "${ROOT_DIR}/deploy/certbot/www" "${ROOT_DIR}/deploy/certbot/conf"
 
@@ -68,7 +69,8 @@ docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" --profile tools run --r
   --rsa-key-size 4096 \
   -d "${FRONTEND_DOMAIN}" \
   -d "${API_DOMAIN}" \
-  -d "${AI_DOMAIN}"
+  -d "${AI_DOMAIN}" \
+  -d "${APP_DOMAIN}"
 
 docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" exec nginx nginx -s reload
 
