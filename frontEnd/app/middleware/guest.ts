@@ -18,6 +18,13 @@ export default defineNuxtRouteMiddleware(async () => {
     if (external) return external
 
     const host = requestUrl.hostname
+
+    // Production: ardocco.com -> app.ardocco.com
+    if (host === 'ardocco.com' || host === 'www.ardocco.com') {
+      return 'https://app.ardocco.com'
+    }
+
+    // Local development fallback
     if (host === 'localhost' || host === '127.0.0.1') {
       const protocol = requestUrl.protocol || 'http:'
       return `${protocol}//${host}:8002`
