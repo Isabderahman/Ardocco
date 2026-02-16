@@ -15,6 +15,7 @@ const props = withDefaults(defineProps<{
     { label: 'Add Terrain', icon: 'i-lucide-plus-square', to: '/terrains/new' },
     { label: 'Profile', icon: 'i-lucide-user', to: '/profile' },
     { label: 'Browse Terrains', icon: 'i-lucide-search', to: '/terrains' },
+    { label: 'Espace Agent', icon: 'i-lucide-clipboard-check', to: '/agent' },
     { label: 'Admin', icon: 'i-lucide-shield', to: '/admin' },
     { label: 'Expert', icon: 'i-lucide-award', to: '/expert' },
     { label: 'Logout', icon: 'i-lucide-log-out', to: '/logout' }
@@ -24,7 +25,7 @@ const props = withDefaults(defineProps<{
 const open = defineModel<boolean>('open', { default: false })
 const collapsed = defineModel<boolean>('collapsed', { default: false })
 
-const { canCreateListing, canAccessAdmin, hasRole } = useAccess()
+const { canCreateListing, canAccessAdmin, canAccessAgent, hasRole } = useAccess()
 
 function filterItems(items: ASidebarItem[]): ASidebarItem[] {
   return items
@@ -35,6 +36,7 @@ function filterItems(items: ASidebarItem[]): ASidebarItem[] {
     .filter((item) => {
       if (item.to === '/terrains/new') return canCreateListing.value
       if (item.to === '/dashboard/terrains') return canCreateListing.value
+      if (item.to === '/agent') return canAccessAgent.value
       if (item.to === '/admin') return canAccessAdmin.value
       if (item.to === '/expert') return hasRole('expert')
       if (!item.to && Array.isArray(item.children) && item.children.length === 0) return false

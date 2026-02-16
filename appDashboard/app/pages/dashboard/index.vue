@@ -9,6 +9,7 @@ definePageMeta({
 })
 
 const { token } = useAuth()
+const { isAdmin, isAgent, isVendeur } = useAccess()
 
 const listings = ref<BackendListing[]>([])
 const loading = ref(true)
@@ -17,8 +18,28 @@ const stats = reactive({
   pending: 0,
   published: 0,
   draft: 0,
-  refused: 0
+  refused: 0,
+  validated: 0
 })
+
+// Role-based labels
+const dashboardTitle = computed(() => {
+  if (isAdmin.value) return 'Tous les terrains'
+  if (isAgent.value) return 'Tous les terrains'
+  return 'Mes terrains'
+})
+
+const statsLabel = computed(() => {
+  if (isAdmin.value || isAgent.value) return 'Total annonces'
+  return 'Mes annonces'
+})
+
+const emptyMessage = computed(() => {
+  if (isAdmin.value || isAgent.value) return 'Aucun terrain dans le systeme.'
+  return 'Vous n\'avez pas encore ajoute de terrain. Commencez par en creer un.'
+})
+
+const canAddTerrain = computed(() => isAdmin.value || isAgent.value || isVendeur.value)
 
 async function fetchListings() {
   if (!token.value) {
@@ -38,6 +59,7 @@ async function fetchListings() {
       stats.published = listings.value.filter(l => String(l.status || '') === 'publie').length
       stats.draft = listings.value.filter(l => String(l.status || '') === 'brouillon').length
       stats.refused = listings.value.filter(l => String(l.status || '') === 'refuse').length
+      stats.validated = listings.value.filter(l => String(l.status || '') === 'valide').length
     }
   } catch (err) {
     console.error('Failed to fetch listings:', err)
@@ -78,11 +100,11 @@ function getStatusBadge(status: string | null | undefined): string {
   const statusMap: Record<string, string> = {
     brouillon: 'Brouillon',
     soumis: 'Soumis',
-    en_revision: 'En révision',
-    valide: 'Validé',
-    publie: 'Publié',
+    en_revision: 'En revision',
+    valide: 'Valide',
+    publie: 'Publie',
     vendu: 'Vendu',
-    refuse: 'Refusé'
+    refuse: 'Refuse'
   }
   return statusMap[status || ''] || status || ''
 }
@@ -106,7 +128,7 @@ function coverPhotoUrl(listing: BackendListing): string | null {
     <!-- Stats Cards -->
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
       <ThemeAStatCard
-        label="Mes annonces"
+        :label="statsLabel"
         :value="String(stats.total)"
         icon="i-lucide-layout-grid"
       />
@@ -131,28 +153,78 @@ function coverPhotoUrl(listing: BackendListing): string | null {
         :value="String(stats.refused).padStart(2, '0')"
         icon="i-lucide-x-circle"
       />
+      <ThemeAStatCard
+        v-if="(isAdmin || isAgent) && stats.validated > 0"
+        label="Validees"
+        :value="String(stats.validated).padStart(2, '0')"
+        icon="i-lucide-badge-check"
+      />
     </div>
 
-    <!-- Refused Listings Alert -->
-    <div v-if="stats.refused > 0" class=" border-2 border-error rounded-xl p-4 boxshadow-sm">
+    <!-- Refused Listings Alert (only for vendeur) -->
+    <div v-if="isVendeur && stats.refused > 0" class="border-2 border-error rounded-xl p-4 boxshadow-sm">
       <div class="flex items-start gap-3">
         <UIcon name="i-lucide-alert-triangle" class="size-10 text-error shrink-0 mt-0.5" />
         <div>
-          <p class="font-medium text-highlighted">{{ stats.refused }} annonce(s) refusée(s)</p>
-          <p class="text-sm  text-muted mt-1">
-            Certaines de vos annonces ont ete refusées par l'administrateur. Consultez les details et corrigez les problemes pour les soumettre a nouveau.
+          <p class="font-medium text-highlighted">{{ stats.refused }} annonce(s) refusee(s)</p>
+          <p class="text-sm text-muted mt-1">
+            Certaines de vos annonces ont ete refusees par l'administrateur. Consultez les details et corrigez les problemes pour les soumettre a nouveau.
           </p>
         </div>
       </div>
+    </div>
+
+    <!-- Quick Actions for Admin/Agent -->
+    <div v-if="isAdmin || isAgent" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <NuxtLink v-if="isAdmin" to="/admin/users" class="block">
+        <div class="bg-elevated rounded-xl p-5 border border-default hover:border-primary/30 transition-colors">
+          <div class="flex items-center gap-3">
+            <div class="p-2 bg-primary/10 rounded-lg">
+              <UIcon name="i-lucide-users" class="size-5 text-primary" />
+            </div>
+            <div>
+              <p class="font-medium text-highlighted">Gerer les utilisateurs</p>
+              <p class="text-sm text-muted">Voir et modifier les comptes</p>
+            </div>
+          </div>
+        </div>
+      </NuxtLink>
+      <NuxtLink to="/agent" class="block">
+        <div class="bg-elevated rounded-xl p-5 border border-default hover:border-primary/30 transition-colors">
+          <div class="flex items-center gap-3">
+            <div class="p-2 bg-warning/10 rounded-lg">
+              <UIcon name="i-lucide-clipboard-check" class="size-5 text-warning" />
+            </div>
+            <div>
+              <p class="font-medium text-highlighted">Valider les annonces</p>
+              <p class="text-sm text-muted">{{ stats.pending }} en attente</p>
+            </div>
+          </div>
+        </div>
+      </NuxtLink>
+      <NuxtLink v-if="isAdmin" to="/admin/listings" class="block">
+        <div class="bg-elevated rounded-xl p-5 border border-default hover:border-primary/30 transition-colors">
+          <div class="flex items-center gap-3">
+            <div class="p-2 bg-success/10 rounded-lg">
+              <UIcon name="i-lucide-layout-list" class="size-5 text-success" />
+            </div>
+            <div>
+              <p class="font-medium text-highlighted">Annonces soumises</p>
+              <p class="text-sm text-muted">Examiner et approuver</p>
+            </div>
+          </div>
+        </div>
+      </NuxtLink>
     </div>
 
     <!-- Featured Terrains Section -->
     <div class="space-y-4">
       <div class="flex items-center justify-between">
         <h2 class="text-lg font-semibold text-highlighted">
-          Terrains en vedette
+          {{ dashboardTitle }}
         </h2>
         <UButton
+          v-if="canAddTerrain"
           to="/terrains/new"
           label="Ajouter un terrain"
           color="primary"
@@ -193,9 +265,10 @@ function coverPhotoUrl(listing: BackendListing): string | null {
           Aucun terrain
         </h3>
         <p class="text-muted mb-4">
-          Vous n'avez pas encore ajoute de terrain. Commencez par en creer un.
+          {{ emptyMessage }}
         </p>
         <UButton
+          v-if="canAddTerrain && isVendeur"
           to="/terrains/new"
           label="Ajouter mon premier terrain"
           color="primary"
@@ -231,7 +304,7 @@ function coverPhotoUrl(listing: BackendListing): string | null {
       >
         <UButton
           to="/dashboard/terrains"
-          label="Voir tous mes terrains"
+          label="Voir tous les terrains"
           variant="outline"
           color="neutral"
         />

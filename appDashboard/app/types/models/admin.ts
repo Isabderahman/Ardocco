@@ -1,5 +1,25 @@
 import type { BackendResponse, LaravelPage } from '~/types/models/api'
 import type { BackendListing } from '~/types/models/listing'
+import type { UserRole } from '~/types/models/auth'
+
+export type AdminUser = {
+  id: string
+  email: string
+  role: UserRole
+  first_name?: string | null
+  last_name?: string | null
+  phone?: string | null
+  company_name?: string | null
+  address?: string | null
+  city?: string | null
+  cin?: string | null
+  is_verified?: boolean
+  is_active?: boolean
+  account_status?: string
+  created_at?: string
+  updated_at?: string
+  contract_signed_at?: string | null
+}
 
 export type AdminStats = {
   users: {
@@ -29,3 +49,7 @@ export type AdminStats = {
 export type AdminStatsResponse = BackendResponse<AdminStats>
 
 export type AdminPendingListingsResponse = BackendResponse<LaravelPage<BackendListing>>
+
+export type AdminUsersResponse = BackendResponse<LaravelPage<AdminUser>>
+
+export type AdminUserResponse = BackendResponse<AdminUser>

@@ -4,23 +4,50 @@ import { listingService } from '~/services/listingService'
 
 definePageMeta({
   layout: 'dashboard',
-  title: 'Mes terrains',
+  title: 'Terrains',
   middleware: 'auth'
 })
 
-const { token } = useAuth()
+const { token, user } = useAuth()
+const { isAdmin, isAgent, isVendeur } = useAccess()
 
 const listings = ref<BackendListing[]>([])
 const loading = ref(true)
-const activeTab = ref<'all' | 'brouillon' | 'soumis' | 'publie' | 'refuse'>('all')
+const activeTab = ref<'all' | 'brouillon' | 'soumis' | 'publie' | 'refuse' | 'valide'>('all')
 
-const tabs = [
-  { key: 'all', label: 'Tous', icon: 'i-lucide-layout-grid' },
-  { key: 'brouillon', label: 'Brouillons', icon: 'i-lucide-file-edit' },
-  { key: 'soumis', label: 'En attente', icon: 'i-lucide-clock' },
-  { key: 'publie', label: 'Publies', icon: 'i-lucide-check-circle' },
-  { key: 'refuse', label: 'Refuses', icon: 'i-lucide-x-circle' }
-] as const
+// Role-based labels
+const pageTitle = computed(() => {
+  if (isAdmin.value || isAgent.value) return 'Tous les terrains'
+  return 'Mes terrains'
+})
+
+const pageDescription = computed(() => {
+  if (isAdmin.value) return 'Gerez toutes les annonces de la plateforme'
+  if (isAgent.value) return 'Consultez et validez les annonces'
+  return 'Gerez toutes vos annonces de terrains'
+})
+
+const emptyAllMessage = computed(() => {
+  if (isAdmin.value || isAgent.value) return 'Aucun terrain dans le systeme.'
+  return 'Vous n\'avez pas encore ajoute de terrain. Commencez par en creer un.'
+})
+
+// Add 'valide' tab for admin/agent
+const tabs = computed(() => {
+  const baseTabs = [
+    { key: 'all' as const, label: 'Tous', icon: 'i-lucide-layout-grid' },
+    { key: 'brouillon' as const, label: 'Brouillons', icon: 'i-lucide-file-edit' },
+    { key: 'soumis' as const, label: 'En attente', icon: 'i-lucide-clock' },
+    { key: 'publie' as const, label: 'Publies', icon: 'i-lucide-check-circle' },
+    { key: 'refuse' as const, label: 'Refuses', icon: 'i-lucide-x-circle' }
+  ]
+
+  if (isAdmin.value || isAgent.value) {
+    baseTabs.splice(3, 0, { key: 'valide' as const, label: 'Valides', icon: 'i-lucide-badge-check' })
+  }
+
+  return baseTabs
+})
 
 async function fetchListings() {
   loading.value = true
@@ -48,6 +75,7 @@ const tabCounts = computed(() => ({
   all: listings.value.length,
   brouillon: listings.value.filter(l => String(l.status || '') === 'brouillon').length,
   soumis: listings.value.filter(l => ['soumis', 'en_revision'].includes(String(l.status || ''))).length,
+  valide: listings.value.filter(l => String(l.status || '') === 'valide').length,
   publie: listings.value.filter(l => String(l.status || '') === 'publie').length,
   refuse: listings.value.filter(l => String(l.status || '') === 'refuse').length
 }))
@@ -77,7 +105,7 @@ function getLocation(listing: BackendListing): string {
 function getStatusInfo(status: string | null | undefined): { label: string; color: string; description: string } {
   const statusMap: Record<string, { label: string; color: string; description: string }> = {
     brouillon: { label: 'Brouillon', color: 'neutral', description: 'Non soumis pour validation' },
-    soumis: { label: 'En attente', color: 'warning', description: 'En attente de validation par l\'admin' },
+    soumis: { label: 'En attente', color: 'warning', description: 'En attente de validation' },
     en_revision: { label: 'En revision', color: 'info', description: 'Des modifications sont demandees' },
     valide: { label: 'Valide', color: 'success', description: 'Valide, en attente de publication' },
     publie: { label: 'Publie', color: 'success', description: 'Visible par tous les visiteurs' },
@@ -96,12 +124,30 @@ function formatDate(date: string | null | undefined): string {
   })
 }
 
+// Only vendeur can submit their own listings
 function canSubmit(listing: BackendListing): boolean {
+  if (!isVendeur.value) return false
   return ['brouillon', 'refuse', 'en_revision'].includes(String(listing.status || ''))
 }
 
+// Check if user can edit the listing
 function canEdit(listing: BackendListing): boolean {
-  return ['brouillon', 'refuse', 'en_revision'].includes(String(listing.status || ''))
+  // Admin and Agent can edit any listing
+  if (isAdmin.value || isAgent.value) return true
+  // Vendeur can only edit their own listings in certain states
+  if (isVendeur.value && listing.owner_id === user.value?.id) {
+    return ['brouillon', 'refuse', 'en_revision'].includes(String(listing.status || ''))
+  }
+  return false
+}
+
+// Show owner info for admin/agent
+function getOwnerName(listing: BackendListing): string | null {
+  if (!isAdmin.value && !isAgent.value) return null
+  const owner = listing.owner
+  if (!owner) return null
+  const parts = [owner.first_name, owner.last_name].filter(Boolean)
+  return parts.length > 0 ? parts.join(' ') : owner.email || null
 }
 
 const submitLoading = ref<string | null>(null)
@@ -111,7 +157,6 @@ async function submitListing(listing: BackendListing) {
   try {
     const res = await listingService.submitListing(listing.id, token.value)
       if (res.success) {
-        // Update the listing status locally
         const index = listings.value.findIndex(l => l.id === listing.id)
         if (index !== -1) {
           const current = listings.value[index]
@@ -137,10 +182,11 @@ onMounted(() => {
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <div>
-        <h1 class="text-2xl font-bold text-highlighted">Mes terrains</h1>
-        <p class="text-muted mt-1">Gerez toutes vos annonces de terrains</p>
+        <h1 class="text-2xl font-bold text-highlighted">{{ pageTitle }}</h1>
+        <p class="text-muted mt-1">{{ pageDescription }}</p>
       </div>
       <UButton
+        v-if="isVendeur || isAdmin || isAgent"
         to="/terrains/new"
         label="Ajouter un terrain"
         color="primary"
@@ -192,13 +238,10 @@ onMounted(() => {
         {{ activeTab === 'all' ? 'Aucun terrain' : 'Aucun terrain dans cette categorie' }}
       </h3>
       <p class="text-muted mb-4">
-        {{ activeTab === 'all'
-          ? 'Vous n\'avez pas encore ajoute de terrain. Commencez par en creer un.'
-          : 'Aucun terrain ne correspond a ce filtre.'
-        }}
+        {{ activeTab === 'all' ? emptyAllMessage : 'Aucun terrain ne correspond a ce filtre.' }}
       </p>
       <UButton
-        v-if="activeTab === 'all'"
+        v-if="activeTab === 'all' && isVendeur"
         to="/terrains/new"
         label="Ajouter mon premier terrain"
         color="primary"
@@ -225,6 +268,11 @@ onMounted(() => {
               <div class="min-w-0">
                 <h3 class="text-base font-semibold text-highlighted truncate">{{ listing.title }}</h3>
                 <p class="text-sm text-muted">{{ listing.reference }}</p>
+                <!-- Show owner for admin/agent -->
+                <p v-if="getOwnerName(listing)" class="text-xs text-dimmed mt-1">
+                  <UIcon name="i-lucide-user" class="size-3 inline" />
+                  {{ getOwnerName(listing) }}
+                </p>
               </div>
               <UBadge
                 :color="getStatusInfo(listing.status).color as any"
@@ -245,9 +293,9 @@ onMounted(() => {
               <span class="text-dimmed">Cree le {{ formatDate(listing.created_at) }}</span>
             </div>
 
-            <!-- Status Description for refused -->
+            <!-- Status Description for refused (vendeur only) -->
             <p
-              v-if="listing.status === 'refuse'"
+              v-if="listing.status === 'refuse' && isVendeur"
               class="text-sm text-error mb-3 flex items-center gap-2"
             >
               <UIcon name="i-lucide-alert-circle" class="size-4" />
@@ -283,6 +331,16 @@ onMounted(() => {
                 :loading="submitLoading === listing.id"
                 @click="submitListing(listing)"
               />
+              <!-- Agent/Admin quick actions -->
+              <NuxtLink v-if="(isAdmin || isAgent) && listing.status === 'soumis'" to="/agent">
+                <UButton
+                  label="Valider"
+                  color="success"
+                  variant="soft"
+                  size="xs"
+                  icon="i-lucide-check"
+                />
+              </NuxtLink>
             </div>
           </div>
         </div>
