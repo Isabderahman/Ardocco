@@ -6,7 +6,8 @@
       "Bash(composer require:*)",
       "Bash(pnpm create:*)",
       "Bash(npx nuxi@latest init:*)",
-      "Bash(pkill:*)"
+      "Bash(pkill:*)",
+      "Bash(chmod:*)"
     ]
   }
 }
