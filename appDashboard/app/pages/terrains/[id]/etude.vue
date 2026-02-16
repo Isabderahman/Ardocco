@@ -153,8 +153,14 @@ async function fetchListing() {
       form.titre_projet = res.data.title || ''
       form.localisation = [res.data.quartier, res.data.commune?.name_fr].filter(Boolean).join(', ')
       form.superficie_terrain = parseFloat(String(res.data.superficie || 0))
-      if (res.data.prix_demande && res.data.superficie) {
-        form.prix_terrain_m2 = parseFloat(String(res.data.prix_demande)) / parseFloat(String(res.data.superficie))
+      // Use prix_par_m2 if available, otherwise calculate from prix_demande/superficie
+      if (res.data.prix_par_m2) {
+        form.prix_terrain_m2 = parseFloat(String(res.data.prix_par_m2))
+      } else if (res.data.prix_demande && res.data.superficie) {
+        const superficie = parseFloat(String(res.data.superficie))
+        if (superficie > 0) {
+          form.prix_terrain_m2 = parseFloat(String(res.data.prix_demande)) / superficie
+        }
       }
     }
   } catch (err) {
@@ -375,6 +381,16 @@ async function analyzePlans() {
 async function saveEtude(submit = false) {
   if (!canEdit.value) return
 
+  // Validate required fields
+  if (!form.superficie_terrain || form.superficie_terrain <= 0) {
+    toast.add({ title: 'La superficie du terrain est requise', color: 'error' })
+    return
+  }
+  if (!form.prix_terrain_m2 || form.prix_terrain_m2 < 0) {
+    toast.add({ title: 'Le prix par m2 est requis', color: 'error' })
+    return
+  }
+
   saving.value = true
   try {
     // Build payload with calculated surfaces
@@ -401,9 +417,17 @@ async function saveEtude(submit = false) {
         await submitForReview()
       }
     }
-  } catch (err) {
+  } catch (err: any) {
     console.error('Failed to save etude:', err)
-    toast.add({ title: 'Erreur lors de la sauvegarde', color: 'error' })
+    // Extract validation errors from response
+    const message = err?.data?.message || err?.message || 'Erreur lors de la sauvegarde'
+    const errors = err?.data?.errors
+    if (errors) {
+      const errorMessages = Object.values(errors).flat().join(', ')
+      toast.add({ title: message, description: errorMessages, color: 'error', timeout: 10000 })
+    } else {
+      toast.add({ title: message, color: 'error' })
+    }
   } finally {
     saving.value = false
   }
@@ -562,16 +586,38 @@ onMounted(async () => {
           <div class="bg-elevated rounded-xl p-6">
             <h2 class="text-lg font-semibold text-highlighted mb-4">Terrain</h2>
             <div class="grid sm:grid-cols-3 gap-4">
-              <UFormField label="Superficie (m2)">
-                <UInput v-model.number="form.superficie_terrain" type="number" min="0" step="0.01" />
+              <UFormField label="Superficie (m2) *" required>
+                <UInput
+                  v-model.number="form.superficie_terrain"
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  placeholder="Ex: 200"
+                  :color="!form.superficie_terrain || form.superficie_terrain <= 0 ? 'error' : undefined"
+                />
               </UFormField>
-              <UFormField label="Prix/m2 (MAD)">
-                <UInput v-model.number="form.prix_terrain_m2" type="number" min="0" step="0.01" />
+              <UFormField label="Prix/m2 (MAD) *" required>
+                <UInput
+                  v-model.number="form.prix_terrain_m2"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="Ex: 5000"
+                  :color="!form.prix_terrain_m2 || form.prix_terrain_m2 < 0 ? 'error' : undefined"
+                />
               </UFormField>
               <UFormField label="Taux immatriculation (%)">
                 <UInput v-model.number="form.taux_immatriculation" type="number" min="0" max="100" step="0.1" />
               </UFormField>
             </div>
+            <!-- Warning if required fields are empty -->
+            <div v-if="!form.superficie_terrain || form.superficie_terrain <= 0 || !form.prix_terrain_m2" class="mt-4 p-3 bg-error/10 border border-error/20 rounded-lg">
+              <div class="flex items-center gap-2 text-sm text-error">
+                <UIcon name="i-lucide-alert-circle" class="size-4" />
+                <span>La superficie et le prix/m2 sont requis pour sauvegarder l'etude.</span>
+              </div>
+            </div>
+
             <div class="mt-4 p-3 bg-default rounded-lg">
               <div class="flex justify-between text-sm">
                 <span class="text-muted">Prix terrain total:</span>

@@ -176,12 +176,27 @@ onMounted(async () => {
           <p class="text-muted">{{ listing.reference }}</p>
         </div>
         <div class="flex items-center gap-2">
-          <NuxtLink v-if="canEditEtude" :to="`/terrains/${listingId}/edit`">
-            <UButton label="Modifier" variant="outline" icon="i-lucide-pencil" />
-          </NuxtLink>
-          <NuxtLink v-if="canEditEtude && latestEtude" :to="`/terrains/${listingId}/etude`">
-            <UButton label="Editer Etude" color="primary" icon="i-lucide-calculator" />
-          </NuxtLink>
+          <UButton
+            v-if="canEditEtude"
+            label="Modifier"
+            variant="outline"
+            icon="i-lucide-pencil"
+            :to="`/terrains/${listingId}/edit`"
+          />
+          <UButton
+            v-if="canEditEtude && latestEtude"
+            label="Editer Etude"
+            color="primary"
+            icon="i-lucide-calculator"
+            :to="`/terrains/${listingId}/etude`"
+          />
+          <UButton
+            v-if="latestEtude?.pdf_path"
+            label="Telecharger PDF"
+            color="success"
+            icon="i-lucide-download"
+            @click="downloadPdf"
+          />
         </div>
       </div>
 
@@ -350,13 +365,13 @@ onMounted(async () => {
                 icon="i-lucide-download"
                 @click="downloadPdf"
               />
-              <NuxtLink v-if="canEditEtude" :to="`/terrains/${listingId}/etude`">
-                <UButton
-                  label="Modifier l'etude"
-                  variant="outline"
-                  icon="i-lucide-edit"
-                />
-              </NuxtLink>
+              <UButton
+                v-if="canEditEtude"
+                label="Modifier l'etude"
+                variant="outline"
+                icon="i-lucide-edit"
+                :to="`/terrains/${listingId}/etude`"
+              />
             </div>
           </div>
 
@@ -368,9 +383,13 @@ onMounted(async () => {
               <p class="text-muted mb-4">
                 L'etude d'investissement sera generee automatiquement ou peut etre creee manuellement.
               </p>
-              <NuxtLink v-if="canEditEtude" :to="`/terrains/${listingId}/etude`">
-                <UButton label="Creer une etude" color="primary" icon="i-lucide-plus" />
-              </NuxtLink>
+              <UButton
+                v-if="canEditEtude"
+                label="Creer une etude"
+                color="primary"
+                icon="i-lucide-plus"
+                :to="`/terrains/${listingId}/etude`"
+              />
             </div>
           </div>
         </div>
@@ -416,6 +435,33 @@ onMounted(async () => {
             </div>
           </div>
 
+          <!-- PDF Download Card -->
+          <div v-if="latestEtude" class="bg-primary/10 border border-primary/20 rounded-xl p-6">
+            <h3 class="text-sm font-semibold text-highlighted mb-3">Business Plan PDF</h3>
+            <div v-if="latestEtude.pdf_path" class="space-y-3">
+              <p class="text-sm text-muted">Le PDF de l'etude est disponible.</p>
+              <UButton
+                label="Telecharger PDF"
+                color="primary"
+                icon="i-lucide-download"
+                class="w-full"
+                @click="downloadPdf"
+              />
+            </div>
+            <div v-else class="space-y-3">
+              <p class="text-sm text-muted">Generez le PDF pour telecharger le business plan.</p>
+              <UButton
+                v-if="canGeneratePdf"
+                label="Generer PDF"
+                color="primary"
+                icon="i-lucide-file-text"
+                class="w-full"
+                :loading="pdfLoading"
+                @click="generatePdf"
+              />
+            </div>
+          </div>
+
           <!-- Quick Stats -->
           <div v-if="latestEtude" class="bg-elevated rounded-xl p-6">
             <h3 class="text-sm font-semibold text-highlighted mb-3">Indicateurs Cles</h3>
@@ -457,9 +503,7 @@ onMounted(async () => {
       <UIcon name="i-lucide-alert-circle" class="size-16 text-muted mx-auto mb-4" />
       <h3 class="text-xl font-semibold text-highlighted mb-2">Terrain non trouve</h3>
       <p class="text-muted mb-4">Ce terrain n'existe pas ou vous n'avez pas les permissions pour le voir.</p>
-      <NuxtLink to="/dashboard">
-        <UButton label="Retour au dashboard" color="primary" />
-      </NuxtLink>
+      <UButton label="Retour au dashboard" color="primary" to="/dashboard" />
     </div>
   </div>
 </template>
