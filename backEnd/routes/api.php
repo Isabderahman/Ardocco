@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\ExpertController;
 use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\FavoriteController;
 use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\EtudeInvestissementController;
 
 /**
  * Routes API pour la géolocalisation
@@ -74,6 +75,21 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/listings/{listing}/fiches/financiere', [ListingController::class, 'upsertFicheFinanciere'])->name('listings.fiches.financiere');
     Route::put('/listings/{listing}/fiches/juridique', [ListingController::class, 'upsertFicheJuridique'])->name('listings.fiches.juridique');
     Route::post('/listings/{listing}/submit', [ListingController::class, 'submit'])->middleware('role:vendeur')->name('listings.submit');
+
+    // Etudes d'investissement
+    Route::prefix('/listings/{listing}/etudes')->name('listings.etudes.')->group(function () {
+        Route::get('/', [EtudeInvestissementController::class, 'index'])->name('index');
+        Route::post('/', [EtudeInvestissementController::class, 'store'])->middleware('role:agent,admin')->name('store');
+        Route::get('/suggestions', [EtudeInvestissementController::class, 'getSuggestions'])->middleware('role:agent,admin')->name('suggestions');
+        Route::post('/analyze-plans', [EtudeInvestissementController::class, 'analyzePlans'])->middleware('role:agent,admin')->name('analyze-plans');
+        Route::get('/{etude}', [EtudeInvestissementController::class, 'show'])->name('show');
+        Route::match(['put', 'patch'], '/{etude}', [EtudeInvestissementController::class, 'update'])->middleware('role:agent,admin')->name('update');
+        Route::post('/{etude}/submit', [EtudeInvestissementController::class, 'submit'])->middleware('role:agent,admin')->name('submit');
+        Route::post('/{etude}/review', [EtudeInvestissementController::class, 'review'])->middleware('role:admin')->name('review');
+        Route::post('/{etude}/generate-pdf', [EtudeInvestissementController::class, 'generatePdf'])->name('generate-pdf');
+        Route::get('/{etude}/download-pdf', [EtudeInvestissementController::class, 'downloadPdf'])->name('download-pdf');
+        Route::delete('/{etude}', [EtudeInvestissementController::class, 'destroy'])->middleware('role:admin')->name('destroy');
+    });
 });
 
 // ==========================================

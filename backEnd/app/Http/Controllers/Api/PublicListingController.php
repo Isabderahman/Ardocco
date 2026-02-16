@@ -183,6 +183,10 @@ class PublicListingController extends Controller
                 'documents' => function ($query) {
                     $query->where('is_public', true);
                 },
+                'etudesInvestissement' => function ($query) {
+                    $query->where('status', 'approved')
+                        ->orderByDesc('created_at');
+                },
             ]);
 
             $listing->load($relations);

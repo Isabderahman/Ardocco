@@ -125,6 +125,24 @@ const hasPhotos = computed(() => {
   return docs.some(doc => (doc as { document_type?: unknown })?.document_type === 'photos')
 })
 
+const photoUrls = computed(() => {
+  const docs = listing.value?.documents
+  if (!Array.isArray(docs)) return []
+  return docs
+    .filter(doc => (doc as { document_type?: unknown })?.document_type === 'photos')
+    .map(doc => (doc as { full_url?: string })?.full_url)
+    .filter((url): url is string => !!url)
+})
+
+const activePhotoIndex = ref(0)
+
+// Etude d'investissement (approved only for display)
+const approvedEtude = computed(() => {
+  const etudes = listing.value?.etudesInvestissement
+  if (!Array.isArray(etudes)) return null
+  return etudes.find(e => e.status === 'approved') || null
+})
+
 const listingMarkers = computed(() => {
   if (!listing.value) return []
   const lat = listingLat.value
@@ -197,10 +215,43 @@ const listingMarkers = computed(() => {
           <!-- Left column (main info) -->
           <div class="lg:col-span-2 space-y-6">
             <!-- Media (photos or fallback map) -->
-            <div class="aspect-video overflow-hidden rounded-xl bg-gray-200">
-              <template v-if="hasPhotos">
-                <div class="flex h-full w-full items-center justify-center">
-                  <UIcon name="i-lucide-image" class="w-16 h-16 text-gray-400"/>
+            <div class="aspect-video overflow-hidden rounded-xl bg-gray-200 relative">
+              <template v-if="photoUrls.length > 0">
+                <img
+                  :src="photoUrls[activePhotoIndex]"
+                  :alt="`Photo ${activePhotoIndex + 1} du terrain`"
+                  class="h-full w-full object-cover"
+                />
+                <!-- Photo navigation controls -->
+                <div v-if="photoUrls.length > 1" class="absolute inset-0 flex items-center justify-between px-4">
+                  <UButton
+                    icon="i-lucide-chevron-left"
+                    color="neutral"
+                    variant="solid"
+                    size="sm"
+                    class="opacity-80 hover:opacity-100 bg-white text-gray-900 hover:bg-white"
+                    :disabled="activePhotoIndex === 0"
+                    @click="activePhotoIndex--"
+                  />
+                  <UButton
+                    icon="i-lucide-chevron-right"
+                    color="neutral"
+                    variant="solid"
+                    size="sm"
+                    class="opacity-80 hover:opacity-100 bg-white text-gray-900 hover:bg-white"
+                    :disabled="activePhotoIndex === photoUrls.length - 1"
+                    @click="activePhotoIndex++"
+                  />
+                </div>
+                <!-- Photo indicators -->
+                <div v-if="photoUrls.length > 1" class="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+                  <button
+                    v-for="(_, index) in photoUrls"
+                    :key="index"
+                    class="w-2 h-2 rounded-full transition-colors"
+                    :class="index === activePhotoIndex ? 'bg-white' : 'bg-white/50'"
+                    @click="activePhotoIndex = index"
+                  />
                 </div>
               </template>
 
@@ -342,6 +393,13 @@ const listingMarkers = computed(() => {
                 </div>
               </div>
             </div>
+
+            <!-- Investment Study / Business Plan (full access only) -->
+            <EtudeInvestissement
+              v-if="hasFullAccess && approvedEtude"
+              :etude="approvedEtude"
+              :show-actions="true"
+            />
 
             <!-- Limited access notice -->
             <div

@@ -48,7 +48,8 @@
           icon="i-lucide-layout-dashboard"
           color="neutral"
           variant="outline"
-          to="/dashboard"
+          :to="dashboardUrl"
+          external
           size="lg"
         />
 
@@ -89,7 +90,8 @@
         label="Add Terrain"
         color="primary"
         size="lg"
-        to="/terrains/new"
+        :to="`${dashboardUrl}/terrains/new`"
+        external
         class="rounded-full font-bold"
       />
     </template>
@@ -126,6 +128,10 @@ import type { NavItem } from '~/types/models/navigation'
 const open = ref(false)
 const { isAuthenticated, ensureUserLoaded } = useAuth()
 const { canCreateListing, canAccessAdmin, hasRole } = useAccess()
+const config = useRuntimeConfig()
+
+// Dashboard app URL (app.ardocco.com)
+const dashboardUrl = computed(() => config.public.dashboardUrl || 'http://localhost:3001')
 
 onMounted(() => {
   if (!isAuthenticated.value) return
@@ -133,21 +139,21 @@ onMounted(() => {
 })
 
 const navItems: NavItem[] = [
-  { label: 'Home', to: '/' },
-  { label: 'About', to: '/about' },
-  { label: 'Buy', to: '/terrains' },
-  { label: 'Blog', to: '/blog' },
+  { label: 'Accueil', to: '/' },
+  { label: 'Comment ça marche', to: '/how-it-works' },
+  { label: 'À propos de nous', to: '/about' },
   { label: 'Contact', to: '/contact' }
 ]
 
 const pagesItems = computed<NavItem[]>(() => {
   const items: NavItem[] = []
+  const baseUrl = dashboardUrl.value
 
   if (isAuthenticated.value) {
-    items.push({ label: 'Dashboard', to: '/dashboard', icon: 'i-lucide-layout-dashboard' })
-    if (canCreateListing.value) items.push({ label: 'Add Terrain', to: '/terrains/new', icon: 'i-lucide-plus-square' })
-    if (canAccessAdmin.value) items.push({ label: 'Admin', to: '/admin', icon: 'i-lucide-shield' })
-    if (hasRole('expert', 'admin')) items.push({ label: 'Expert', to: '/expert', icon: 'i-lucide-award' })
+    items.push({ label: 'Dashboard', to: baseUrl, icon: 'i-lucide-layout-dashboard' })
+    if (canCreateListing.value) items.push({ label: 'Add Terrain', to: `${baseUrl}/terrains/new`, icon: 'i-lucide-plus-square' })
+    if (canAccessAdmin.value) items.push({ label: 'Admin', to: `${baseUrl}/admin`, icon: 'i-lucide-shield' })
+    if (hasRole('expert', 'admin')) items.push({ label: 'Expert', to: `${baseUrl}/expert`, icon: 'i-lucide-award' })
   }
 
   if (isAuthenticated.value) {

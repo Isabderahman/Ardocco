@@ -6,6 +6,8 @@ definePageMeta({
 
 const { login } = useAuth()
 const route = useRoute()
+const config = useRuntimeConfig()
+const requestUrl = useRequestURL()
 
 const state = reactive({
   email: '',
@@ -23,6 +25,27 @@ function safeRedirectPath(value: unknown): string | null {
   return trimmed
 }
 
+function normalizeExternalUrl(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  const trimmed = value.trim()
+  if (!trimmed) return null
+  if (!/^https?:\/\//i.test(trimmed)) return null
+  return trimmed.replace(/\/+$/, '')
+}
+
+function resolveDashboardBase(): string | null {
+  const external = normalizeExternalUrl(config.public.dashboardUrl)
+  if (external) return external
+
+  const host = requestUrl.hostname
+  if (host === 'localhost' || host === '127.0.0.1') {
+    const protocol = requestUrl.protocol || 'http:'
+    return `${protocol}//${host}:8002`
+  }
+
+  return null
+}
+
 async function onSubmit() {
   pending.value = true
   error.value = null
@@ -32,6 +55,13 @@ async function onSubmit() {
     const redirect = safeRedirectPath(route.query.redirect)
     if (redirect) {
       await navigateTo(redirect)
+      return
+    }
+
+    const externalDashboard = resolveDashboardBase()
+    if (externalDashboard && res.token) {
+      const token = encodeURIComponent(res.token)
+      await navigateTo(`${externalDashboard}/auth/consume?token=${token}`, { external: true })
       return
     }
 

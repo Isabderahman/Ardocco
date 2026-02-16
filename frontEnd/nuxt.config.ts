@@ -60,7 +60,9 @@ export default defineNuxtConfig({
   runtimeConfig: {
     backendBaseUrl,
     public: {
-      googleMapsApiKey: ''
+      googleMapsApiKey: '',
+      cookieDomain: '', // Set to '.ardocco.com' in production for cross-subdomain auth
+      dashboardUrl: '' // URL to app.ardocco.com for dashboard redirect
     }
   },
 

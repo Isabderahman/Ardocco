@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\EtudeInvestissement;
 use App\Models\FicheFinanciere;
 use App\Models\FicheJuridique;
 use App\Models\FicheTechnique;
@@ -21,6 +22,7 @@ class AgentListingController extends Controller
                 'commune.province.region',
                 'owner',
                 'agent',
+                'etudesInvestissement' => fn($q) => $q->latest()->limit(1),
             ])
             ->orderByDesc('submitted_at')
             ->orderByDesc('created_at');
@@ -130,6 +132,9 @@ class AgentListingController extends Controller
 
         $this->markFichesValidated($listing, $agent->id, $now);
 
+        // Auto-approve the latest etude if exists
+        $this->approveLatestEtude($listing, $agent->id, $now);
+
         Notification::create([
             'user_id' => $listing->owner_id,
             'type' => 'listing_approved',
@@ -138,6 +143,8 @@ class AgentListingController extends Controller
             'link' => "/listings/{$listing->id}",
             'is_read' => false,
         ]);
+
+        $listing->load('etudesInvestissement');
 
         return response()->json([
             'success' => true,
@@ -279,5 +286,23 @@ class AgentListingController extends Controller
                 'validated_by' => $validatorId,
                 'validated_at' => $validatedAt,
             ]);
+    }
+
+    private function approveLatestEtude(Listing $listing, string $reviewerId, $reviewedAt): void
+    {
+        // Get the latest etude (preferably AI-generated draft)
+        $etude = EtudeInvestissement::query()
+            ->where('listing_id', $listing->id)
+            ->whereIn('status', ['draft', 'pending_review'])
+            ->latest()
+            ->first();
+
+        if ($etude) {
+            $etude->forceFill([
+                'status' => 'approved',
+                'reviewed_by' => $reviewerId,
+                'reviewed_at' => $reviewedAt,
+            ])->save();
+        }
     }
 }

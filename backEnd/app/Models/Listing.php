@@ -18,6 +18,7 @@ class Listing extends Model
         'contact_whatsapp',
         'contact_email',
         'owner_attestation',
+        'user_role',
         'reference',
         'title',
         'description',
@@ -45,6 +46,8 @@ class Listing extends Model
         'perimetre',
         'coefficient_occupation',
         'hauteur_max',
+        'cout_investissement',
+        'ratio',
         'is_exclusive',
         'is_urgent',
         'visibility',
@@ -67,6 +70,8 @@ class Listing extends Model
         'show_price_per_m2' => 'boolean',
         'negotiable' => 'boolean',
         'coefficient_occupation' => 'decimal:2',
+        'cout_investissement' => 'decimal:2',
+        'ratio' => 'decimal:2',
         'viabilisation' => 'array',
         'is_exclusive' => 'boolean',
         'is_urgent' => 'boolean',
@@ -131,6 +136,18 @@ class Listing extends Model
     public function favorites()
     {
         return $this->hasMany(Favorite::class);
+    }
+
+    public function etudesInvestissement()
+    {
+        return $this->hasMany(EtudeInvestissement::class);
+    }
+
+    public function latestEtudeApproved()
+    {
+        return $this->hasOne(EtudeInvestissement::class)
+            ->where('status', 'approved')
+            ->latest();
     }
 
     // Scopes

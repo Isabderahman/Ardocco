@@ -29,6 +29,10 @@ class Document extends Model
         'extracted_data' => 'array',
     ];
 
+    protected $appends = [
+        'full_url',
+    ];
+
     public function listing()
     {
         return $this->belongsTo(Listing::class);

@@ -11,6 +11,7 @@ use App\Models\FicheTechnique;
 use App\Models\Listing;
 use App\Models\Notification;
 use App\Models\User;
+use App\Jobs\GenerateEtudeInvestissement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Storage;
@@ -103,7 +104,7 @@ class ListingController extends Controller
         $validated = $request->validate([
             'reference' => 'nullable|string|max:50|unique:listings,reference',
             'title' => 'required|string|max:255',
-            'description' => 'required|string|max:5000',
+            'description' => 'nullable|string|max:5000',
             'commune_id' => 'required|uuid|exists:communes,id',
             'quartier' => 'nullable|string|max:100',
             'address' => 'nullable|string',
@@ -118,21 +119,26 @@ class ListingController extends Controller
             'price_on_request' => 'sometimes|boolean',
             'price_per_m2' => 'sometimes|boolean',
             'negotiable' => 'sometimes|boolean',
-            'phone' => 'required|string|max:20',
+            'phone' => 'nullable|string|max:20',
             'whatsapp' => 'nullable|string|max:20',
             'email' => 'nullable|email|max:255',
-            'owner_attestation' => 'accepted',
+            'owner_attestation' => 'sometimes|accepted',
             'titre_foncier' => 'sometimes|boolean',
             'reference_tf' => 'nullable|string|max:100',
             'perimetre' => 'nullable|string|in:urbain,rural,periurbain,Urbain,Rural,Périurbain,Periurbain,peri-urbain,periurbain',
             'zonage' => 'nullable|string|max:100',
-            'photos' => 'nullable|array|max:3',
+            'photos' => 'nullable|array|max:5',
             'photos.*' => 'file|mimes:jpg,jpeg,png|max:10240',
             'plan_situation' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
+            'plan_cadastral' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
             'type_terrain' => 'required|in:residentiel,commercial,industriel,agricole,mixte',
             'visibility' => 'nullable|in:public,private,restricted',
             'is_exclusive' => 'sometimes|boolean',
             'is_urgent' => 'sometimes|boolean',
+            'user_role' => 'nullable|string|in:proprietaire,agent',
+            'cout_investissement' => 'nullable|numeric|min:0',
+            'ratio' => 'nullable|numeric|min:0|max:100',
+            'note_renseignement' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
         ]);
 
         $geojsonPolygon = $validated['geojson_polygon'] ?? null;
@@ -214,13 +220,14 @@ class ListingController extends Controller
         $listing = Listing::create([
             'owner_id' => $user->id,
             'agent_id' => null,
-            'contact_phone' => $validated['phone'],
+            'contact_phone' => $validated['phone'] ?? $user->phone,
             'contact_whatsapp' => $validated['whatsapp'] ?? null,
-            'contact_email' => $validated['email'] ?? null,
+            'contact_email' => $validated['email'] ?? $user->email,
             'owner_attestation' => true,
+            'user_role' => $validated['user_role'] ?? null,
             'reference' => $validated['reference'] ?? null,
             'title' => $validated['title'],
-            'description' => $validated['description'],
+            'description' => $validated['description'] ?? null,
             'commune_id' => $validated['commune_id'],
             'quartier' => $validated['quartier'] ?? null,
             'address' => $validated['address'] ?? null,
@@ -243,6 +250,8 @@ class ListingController extends Controller
             'perimetre' => $perimetre,
             'is_exclusive' => filter_var($validated['is_exclusive'] ?? false, FILTER_VALIDATE_BOOLEAN),
             'is_urgent' => filter_var($validated['is_urgent'] ?? false, FILTER_VALIDATE_BOOLEAN),
+            'cout_investissement' => isset($validated['cout_investissement']) ? (float) $validated['cout_investissement'] : null,
+            'ratio' => isset($validated['ratio']) ? (float) $validated['ratio'] : null,
             'views_count' => 0,
         ]);
 
@@ -251,6 +260,23 @@ class ListingController extends Controller
 
         if ($request->hasFile('plan_situation')) {
             $file = $request->file('plan_situation');
+            $path = $file->store("listings/{$listing->id}/documents", 'public');
+
+            Document::create([
+                'listing_id' => $listing->id,
+                'uploaded_by' => $user->id,
+                'document_type' => 'plan_cadastral',
+                'file_name' => $file->getClientOriginalName(),
+                'file_path' => $path,
+                'file_size' => $file->getSize(),
+                'mime_type' => $file->getMimeType(),
+                'is_public' => false,
+                'processing_status' => 'completed',
+            ]);
+        }
+
+        if ($request->hasFile('plan_cadastral')) {
+            $file = $request->file('plan_cadastral');
             $path = $file->store("listings/{$listing->id}/documents", 'public');
 
             Document::create([
@@ -284,11 +310,32 @@ class ListingController extends Controller
             }
         }
 
+        if ($request->hasFile('note_renseignement')) {
+            $file = $request->file('note_renseignement');
+            $path = $file->store("listings/{$listing->id}/documents", 'public');
+
+            Document::create([
+                'listing_id' => $listing->id,
+                'uploaded_by' => $user->id,
+                'document_type' => 'note_renseignements',
+                'file_name' => $file->getClientOriginalName(),
+                'file_path' => $path,
+                'file_size' => $file->getSize(),
+                'mime_type' => $file->getMimeType(),
+                'is_public' => false,
+                'processing_status' => 'completed',
+            ]);
+        }
+
         $listing->load(['commune.province.region', 'owner', 'agent']);
+
+        // Dispatch job to generate AI investment study
+        GenerateEtudeInvestissement::dispatch($listing, $user->id);
 
         return response()->json([
             'success' => true,
             'data' => $listing,
+            'message' => 'Listing created. Investment study is being generated.',
         ], 201);
     }
 
@@ -311,6 +358,7 @@ class ListingController extends Controller
             'ficheFinanciere',
             'ficheJuridique',
             'documents',
+            'etudesInvestissement' => fn($q) => $q->orderByDesc('created_at'),
         ]);
 
         return response()->json([
@@ -353,6 +401,8 @@ class ListingController extends Controller
             'visibility' => 'nullable|in:public,private,restricted',
             'is_exclusive' => 'sometimes|boolean',
             'is_urgent' => 'sometimes|boolean',
+            'cout_investissement' => 'nullable|numeric|min:0',
+            'ratio' => 'nullable|numeric|min:0|max:100',
         ]);
 
         if (array_key_exists('commune_id', $validated)) {
@@ -395,7 +445,13 @@ class ListingController extends Controller
     {
         $user = $request->user();
 
-        if ($user->role !== 'vendeur' || $listing->owner_id !== $user->id) {
+        // Vendeurs can only submit their own listings
+        // Agents and admins can submit any listing
+        $canSubmit = ($user->role === 'vendeur' && $listing->owner_id === $user->id)
+            || $user->isAgent()
+            || $user->isAdmin();
+
+        if (!$canSubmit) {
             return response()->json([
                 'success' => false,
                 'message' => 'Forbidden.',
@@ -601,10 +657,6 @@ class ListingController extends Controller
 
         if (!is_string($listing->title) || trim($listing->title) === '') {
             $missing[] = 'title';
-        }
-
-        if (!is_string($listing->description) || trim($listing->description ?? '') === '') {
-            $missing[] = 'description';
         }
 
         if (!$listing->commune_id) {

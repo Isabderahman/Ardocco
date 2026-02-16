@@ -103,15 +103,11 @@ const sortOptions = [
 ]
 
 const provincesLegend = [
-  { name: 'Casablanca', color: '#FF6B6B' },
-  { name: 'Mohammedia', color: '#4ECDC4' },
-  { name: 'Benslimane', color: '#B8E986' },
-  { name: 'Settat', color: '#95E1D3' },
-  { name: 'El Jadida', color: '#F38181' },
-  { name: 'Berrechid', color: '#AA96DA' },
-  { name: 'Mediouna', color: '#FFD93D' },
-  { name: 'Nouaceur', color: '#6BCB77' },
-  { name: 'Sidi Bennour', color: '#4D96FF' }
+  { name: 'Casablanca', color: '#1A7BFD' },
+  { name: 'Nouaceur', color: '#60a5fa' },
+  { name: 'Mohammedia', color: '#94a3b8' },
+  { name: 'Mediouna', color: '#64748b' },
+  { name: 'Berrechid', color: '#94a3b8' }
 ]
 
 const provinceOptions = computed(() => provincesLegend.map(p => ({ label: p.name, value: p.name })))
@@ -140,6 +136,16 @@ const formatPrice = (price: number | string | null | undefined) => {
     currency: 'MAD',
     maximumFractionDigits: 0
   }).format(numPrice)
+}
+
+const formatPriceMDHS = (price: number | string | null | undefined) => {
+  const numPrice = Number(price)
+  if (!Number.isFinite(numPrice) || numPrice <= 0) return '—'
+  const millions = numPrice / 1_000_000
+  if (millions >= 1) {
+    return `${millions.toFixed(millions % 1 === 0 ? 0 : 1)} MDHS`
+  }
+  return `${(numPrice / 1000).toFixed(0)}K DHS`
 }
 
 function numeric(value: unknown): number | null {
@@ -241,7 +247,7 @@ const mapMarkers = computed<MapMarker[]>(() => {
         lng,
         title: listing.title,
         subtitle: listingLocation(listing),
-        label: formatPrice(listing.prix_demande),
+        label: formatPriceMDHS(listing.prix_demande),
         href: `/terrains/${listing.id}`
       }
     })

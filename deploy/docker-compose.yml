@@ -67,6 +67,8 @@ services:
       NUXT_BACKEND_BASE_URL: ${NUXT_BACKEND_BASE_URL}
       NUXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${NUXT_PUBLIC_GOOGLE_MAPS_API_KEY}
       NUXT_PUBLIC_API_BASE_URL: ${NUXT_PUBLIC_API_BASE_URL}
+      NUXT_PUBLIC_COOKIE_DOMAIN: .${FRONTEND_DOMAIN}
+      NUXT_PUBLIC_DASHBOARD_URL: https://${APP_DOMAIN}
     expose:
       - "3000"
 
@@ -82,6 +84,26 @@ services:
     expose:
       - "${AI_PORT}"
 
+  app-dashboard:
+    build:
+      context: ../appDashboard
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3001
+
+      NUXT_BACKEND_BASE_URL: ${NUXT_BACKEND_BASE_URL}
+      NUXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${NUXT_PUBLIC_GOOGLE_MAPS_API_KEY}
+      NUXT_PUBLIC_API_BASE_URL: ${NUXT_PUBLIC_API_BASE_URL}
+      NUXT_PUBLIC_COOKIE_DOMAIN: .${FRONTEND_DOMAIN}
+      NUXT_PUBLIC_MAIN_SITE_URL: https://${FRONTEND_DOMAIN}
+    expose:
+      - "3001"
+
   nginx:
     image: nginx:1.25-alpine
     restart: unless-stopped
@@ -89,10 +111,12 @@ services:
       - frontend
       - backend
       - ai
+      - app-dashboard
     environment:
       FRONTEND_DOMAIN: ${FRONTEND_DOMAIN}
       API_DOMAIN: ${API_DOMAIN}
       AI_DOMAIN: ${AI_DOMAIN}
+      APP_DOMAIN: ${APP_DOMAIN}
       AI_PORT: ${AI_PORT}
       LETSENCRYPT_PRIMARY_DOMAIN: ${FRONTEND_DOMAIN}
     ports:

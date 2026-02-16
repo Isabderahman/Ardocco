@@ -1,0 +1,1 @@
+export { default } from "file:///Users/nextlaptop/Desktop/WKS/Ardocco/appDashboard/node_modules/@nuxt/vite-builder/dist/runtime/vite-node.mjs"
