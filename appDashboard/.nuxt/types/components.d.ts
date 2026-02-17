@@ -17,6 +17,8 @@ interface _GlobalComponents {
   'AppLogo': typeof import("../../app/components/AppLogo.vue").default
   'CasablancaSettatMap': typeof import("../../app/components/CasablancaSettatMap.vue").default
   'EtudeInvestissement': typeof import("../../app/components/EtudeInvestissement.vue").default
+  'EtudeInvestissementCard': typeof import("../../app/components/EtudeInvestissementCard.vue").default
+  'FicheFinanciereCard': typeof import("../../app/components/FicheFinanciereCard.vue").default
   'HomeHero': typeof import("../../app/components/HomeHero.vue").default
   'MiniListingMap': typeof import("../../app/components/MiniListingMap.vue").default
   'TemplateMenu': typeof import("../../app/components/TemplateMenu.vue").default
@@ -187,6 +189,8 @@ interface _GlobalComponents {
   'LazyAppLogo': LazyComponent<typeof import("../../app/components/AppLogo.vue").default>
   'LazyCasablancaSettatMap': LazyComponent<typeof import("../../app/components/CasablancaSettatMap.vue").default>
   'LazyEtudeInvestissement': LazyComponent<typeof import("../../app/components/EtudeInvestissement.vue").default>
+  'LazyEtudeInvestissementCard': LazyComponent<typeof import("../../app/components/EtudeInvestissementCard.vue").default>
+  'LazyFicheFinanciereCard': LazyComponent<typeof import("../../app/components/FicheFinanciereCard.vue").default>
   'LazyHomeHero': LazyComponent<typeof import("../../app/components/HomeHero.vue").default>
   'LazyMiniListingMap': LazyComponent<typeof import("../../app/components/MiniListingMap.vue").default>
   'LazyTemplateMenu': LazyComponent<typeof import("../../app/components/TemplateMenu.vue").default>

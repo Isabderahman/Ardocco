@@ -308,67 +308,264 @@ const listingMarkers = computed(() => {
             </div>
 
             <!-- Technical details (full access only) -->
-            <div v-if="hasFullAccess" class="bg-white rounded-xl p-6 shadow-sm">
-              <h2 class="text-lg font-semibold text-gray-900 mb-4">Caractéristiques techniques</h2>
-              <div class="grid sm:grid-cols-2 gap-4">
-                <div v-if="listing.titre_foncier" class="flex justify-between">
-                  <span class="text-gray-500">Titre foncier</span>
-                  <span class="font-medium">{{ listing.titre_foncier }}</span>
-                </div>
-                <div v-if="listing.forme_terrain" class="flex justify-between">
-                  <span class="text-gray-500">Forme</span>
-                  <span class="font-medium">{{ listing.forme_terrain }}</span>
-                </div>
-                <div v-if="listing.topographie" class="flex justify-between">
-                  <span class="text-gray-500">Topographie</span>
-                  <span class="font-medium">{{ listing.topographie }}</span>
-                </div>
-                <div v-if="listing.zonage" class="flex justify-between">
-                  <span class="text-gray-500">Zonage</span>
-                  <span class="font-medium">{{ listing.zonage }}</span>
-                </div>
-                <div v-if="listing.coefficient_occupation" class="flex justify-between">
-                  <span class="text-gray-500">COS</span>
-                  <span class="font-medium">{{ listing.coefficient_occupation }}</span>
-                </div>
-                <div v-if="listing.hauteur_max" class="flex justify-between">
-                  <span class="text-gray-500">Hauteur max</span>
-                  <span class="font-medium">{{ listing.hauteur_max }}m</span>
+            <div v-if="hasFullAccess" class="bg-white rounded-xl shadow-sm overflow-hidden">
+              <!-- Header -->
+              <div class="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 text-white">
+                <div class="flex items-center gap-3">
+                  <UIcon name="i-lucide-clipboard-list" class="w-6 h-6" />
+                  <div>
+                    <h2 class="text-lg font-semibold">Caracteristiques Techniques</h2>
+                    <p class="text-blue-100 text-sm">Informations detaillees du terrain</p>
+                  </div>
                 </div>
               </div>
 
-              <!-- Viabilisation -->
-              <div v-if="listing.viabilisation?.length" class="mt-4">
-                <p class="text-gray-500 mb-2">Viabilisation</p>
-                <div class="flex flex-wrap gap-2">
-                  <span
-                    v-for="v in listing.viabilisation"
-                    :key="v"
-                    class="bg-green-100 text-green-700 text-sm px-3 py-1 rounded-full"
-                  >
-                    {{ v }}
-                  </span>
+              <div class="p-6 space-y-6">
+                <!-- Terrain Info Table -->
+                <div>
+                  <h3 class="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <UIcon name="i-lucide-map" class="w-4 h-4 text-blue-500" />
+                    Terrain
+                  </h3>
+                  <table class="w-full text-sm">
+                    <tbody class="divide-y divide-gray-100">
+                      <tr>
+                        <td class="py-2 text-gray-500">Superficie</td>
+                        <td class="py-2 text-right font-medium text-gray-900">{{ listing.superficie }} m²</td>
+                      </tr>
+                      <tr>
+                        <td class="py-2 text-gray-500">Type de terrain</td>
+                        <td class="py-2 text-right font-medium text-gray-900 capitalize">{{ terrainTypeLabels[listing.type_terrain || ''] || listing.type_terrain || '-' }}</td>
+                      </tr>
+                      <tr v-if="listing.forme_terrain">
+                        <td class="py-2 text-gray-500">Forme du terrain</td>
+                        <td class="py-2 text-right font-medium text-gray-900 capitalize">{{ listing.forme_terrain }}</td>
+                      </tr>
+                      <tr v-if="listing.topographie">
+                        <td class="py-2 text-gray-500">Topographie</td>
+                        <td class="py-2 text-right font-medium text-gray-900 capitalize">{{ listing.topographie }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <!-- Legal/Administrative Table -->
+                <div class="border-t pt-4">
+                  <h3 class="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <UIcon name="i-lucide-file-text" class="w-4 h-4 text-blue-500" />
+                    Situation Administrative
+                  </h3>
+                  <table class="w-full text-sm">
+                    <tbody class="divide-y divide-gray-100">
+                      <tr>
+                        <td class="py-2 text-gray-500">Titre foncier</td>
+                        <td class="py-2 text-right font-medium text-gray-900">{{ listing.titre_foncier || 'Non renseigne' }}</td>
+                      </tr>
+                      <tr>
+                        <td class="py-2 text-gray-500">Zonage / Perimetre</td>
+                        <td class="py-2 text-right font-medium text-gray-900">{{ listing.zonage || '-' }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <!-- Construction Parameters Table -->
+                <div v-if="listing.coefficient_occupation || listing.hauteur_max" class="border-t pt-4">
+                  <h3 class="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <UIcon name="i-lucide-building" class="w-4 h-4 text-blue-500" />
+                    Parametres de Construction
+                  </h3>
+                  <table class="w-full text-sm">
+                    <tbody class="divide-y divide-gray-100">
+                      <tr v-if="listing.coefficient_occupation">
+                        <td class="py-2 text-gray-500">Coefficient d'Occupation (COS)</td>
+                        <td class="py-2 text-right font-medium text-gray-900">{{ listing.coefficient_occupation }}</td>
+                      </tr>
+                      <tr v-if="listing.hauteur_max">
+                        <td class="py-2 text-gray-500">Hauteur maximale</td>
+                        <td class="py-2 text-right font-medium text-gray-900">{{ listing.hauteur_max }} m</td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  <!-- Constructibility indicator -->
+                  <div v-if="listing.coefficient_occupation && listing.superficie" class="mt-4 p-4 bg-blue-50 rounded-lg">
+                    <div class="flex items-center justify-between">
+                      <span class="text-sm text-blue-700">Surface constructible estimee</span>
+                      <span class="text-lg font-bold text-blue-900">
+                        {{ Math.round(Number(listing.superficie) * Number(listing.coefficient_occupation)) }} m²
+                      </span>
+                    </div>
+                    <p class="text-xs text-blue-600 mt-1">Base: {{ listing.superficie }} m² × COS {{ listing.coefficient_occupation }}</p>
+                  </div>
+                </div>
+
+                <!-- Viabilisation -->
+                <div v-if="listing.viabilisation?.length" class="border-t pt-4">
+                  <h3 class="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <UIcon name="i-lucide-plug" class="w-4 h-4 text-blue-500" />
+                    Viabilisation
+                  </h3>
+                  <div class="flex flex-wrap gap-2">
+                    <span
+                      v-for="v in listing.viabilisation"
+                      :key="v"
+                      class="bg-green-100 text-green-700 text-sm px-3 py-1 rounded-full flex items-center gap-1"
+                    >
+                      <UIcon name="i-lucide-check" class="w-3 h-3" />
+                      {{ v }}
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Price Analysis -->
+                <div class="border-t pt-4">
+                  <h3 class="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <UIcon name="i-lucide-calculator" class="w-4 h-4 text-blue-500" />
+                    Analyse du Prix
+                  </h3>
+                  <table class="w-full text-sm">
+                    <tbody class="divide-y divide-gray-100">
+                      <tr>
+                        <td class="py-2 text-gray-500">Prix demande</td>
+                        <td class="py-2 text-right font-bold text-primary-600">{{ formatPrice(listing.prix_demande) }}</td>
+                      </tr>
+                      <tr>
+                        <td class="py-2 text-gray-500">Prix au m²</td>
+                        <td class="py-2 text-right font-medium text-gray-900">{{ listing.prix_par_m2 ? formatPrice(listing.prix_par_m2) : '-' }}</td>
+                      </tr>
+                      <tr v-if="listing.prix_estime">
+                        <td class="py-2 text-gray-500">Prix estime (marche)</td>
+                        <td class="py-2 text-right font-medium text-green-600">{{ formatPrice(listing.prix_estime) }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <!-- Construction Costs Estimate -->
+                <div v-if="listing.superficie" class="border-t pt-4">
+                  <h3 class="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <UIcon name="i-lucide-hard-hat" class="w-4 h-4 text-blue-500" />
+                    Couts de Construction (Estimation)
+                  </h3>
+                  <table class="w-full text-sm">
+                    <tbody class="divide-y divide-gray-100">
+                      <tr>
+                        <td class="py-2 text-gray-500">Surface constructible</td>
+                        <td class="py-2 text-right font-medium text-gray-900">
+                          {{ Math.round(Number(listing.superficie) * Number(listing.coefficient_occupation || 4)) }} m²
+                          <span v-if="!listing.coefficient_occupation" class="text-xs text-gray-400">(COS 4 par defaut)</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td class="py-2 text-gray-500">Gros oeuvres (2,500 MAD/m²)</td>
+                        <td class="py-2 text-right font-medium text-gray-900">
+                          {{ formatPrice(Math.round(Number(listing.superficie) * Number(listing.coefficient_occupation || 4) * 2500)) }}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td class="py-2 text-gray-500">Second oeuvre + Finitions (1,500 MAD/m²)</td>
+                        <td class="py-2 text-right font-medium text-gray-900">
+                          {{ formatPrice(Math.round(Number(listing.superficie) * Number(listing.coefficient_occupation || 4) * 1500)) }}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td class="py-2 text-gray-500">Amenagements divers</td>
+                        <td class="py-2 text-right font-medium text-gray-900">{{ formatPrice(100000) }}</td>
+                      </tr>
+                      <tr class="bg-gray-50">
+                        <td class="py-2 px-2 font-semibold text-gray-700">Total travaux</td>
+                        <td class="py-2 px-2 text-right font-bold text-gray-900">
+                          {{ formatPrice(Math.round(Number(listing.superficie) * Number(listing.coefficient_occupation || 4) * 4000) + 100000) }}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <p class="text-xs text-gray-400 mt-2">* Estimation basee sur les couts moyens de construction au Maroc (R+4)</p>
+                </div>
+
+                <!-- Additional Fees -->
+                <div v-if="listing.superficie" class="border-t pt-4">
+                  <h3 class="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <UIcon name="i-lucide-receipt" class="w-4 h-4 text-blue-500" />
+                    Frais Additionnels (Estimation)
+                  </h3>
+                  <table class="w-full text-sm">
+                    <tbody class="divide-y divide-gray-100">
+                      <tr>
+                        <td class="py-2 text-gray-500">Frais d'immatriculation (5%)</td>
+                        <td class="py-2 text-right font-medium text-gray-900">
+                          {{ formatPrice(Math.round(Number(listing.prix_demande || 0) * 0.05)) }}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td class="py-2 text-gray-500">Groupement d'etudes (2.5%)</td>
+                        <td class="py-2 text-right font-medium text-gray-900">
+                          {{ formatPrice(Math.round((Number(listing.superficie) * Number(listing.coefficient_occupation || 4) * 4000 + 100000) * 0.025)) }}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td class="py-2 text-gray-500">Autorisation + Eclatement</td>
+                        <td class="py-2 text-right font-medium text-gray-900">{{ formatPrice(50000) }}</td>
+                      </tr>
+                      <tr>
+                        <td class="py-2 text-gray-500">LYDEC / Branchements</td>
+                        <td class="py-2 text-right font-medium text-gray-900">{{ formatPrice(100000) }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <!-- Investment Summary -->
+                <div v-if="listing.superficie || listing.cout_investissement" class="border-t pt-4">
+                  <h3 class="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <UIcon name="i-lucide-piggy-bank" class="w-4 h-4 text-blue-500" />
+                    Resume Investissement
+                  </h3>
+                  <div class="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg">
+                    <table class="w-full text-sm">
+                      <tbody>
+                        <tr>
+                          <td class="py-1 text-gray-600">Prix terrain</td>
+                          <td class="py-1 text-right font-medium text-gray-900">{{ formatPrice(listing.prix_demande) }}</td>
+                        </tr>
+                        <tr v-if="listing.superficie">
+                          <td class="py-1 text-gray-600">Travaux + Frais</td>
+                          <td class="py-1 text-right font-medium text-gray-900">
+                            {{ formatPrice(Math.round(Number(listing.superficie) * Number(listing.coefficient_occupation || 4) * 4000) + 350000) }}
+                          </td>
+                        </tr>
+                        <tr class="border-t border-blue-200">
+                          <td class="py-2 font-bold text-gray-900">Investissement Total</td>
+                          <td class="py-2 text-right text-xl font-bold text-blue-700">
+                            {{ listing.cout_investissement
+                              ? formatPrice(listing.cout_investissement)
+                              : formatPrice(Number(listing.prix_demande || 0) + Math.round(Number(listing.superficie || 0) * Number(listing.coefficient_occupation || 4) * 4000) + 350000)
+                            }}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                    <div v-if="listing.ratio" class="mt-3 pt-3 border-t border-blue-200 flex items-center justify-between">
+                      <span class="text-sm text-gray-600">Ratio de rentabilite</span>
+                      <span
+                        class="text-lg font-bold"
+                        :class="Number(listing.ratio) >= 0 ? 'text-green-600' : 'text-red-600'"
+                      >
+                        {{ Number(listing.ratio).toFixed(1) }}%
+                      </span>
+                    </div>
+                  </div>
+                  <p class="text-xs text-gray-400 mt-2">* Estimations indicatives - Consultez l'etude d'investissement pour des calculs detailles</p>
                 </div>
               </div>
             </div>
 
-            <!-- Financial analysis (full access only) -->
-            <div v-if="hasFullAccess && listing.ficheFinanciere" class="bg-white rounded-xl p-6 shadow-sm">
-              <h2 class="text-lg font-semibold text-gray-900 mb-4">Analyse financière</h2>
-              <div class="grid sm:grid-cols-2 gap-4">
-                <div v-if="listing.ficheFinanciere.estimated_market_price" class="flex justify-between">
-                  <span class="text-gray-500">Prix estimé</span>
-                  <span class="font-medium">{{ formatPrice(listing.ficheFinanciere.estimated_market_price) }}</span>
-                </div>
-                <div v-if="listing.ficheFinanciere.rentabilite" class="flex justify-between">
-                  <span class="text-gray-500">Rentabilité estimée</span>
-                  <span class="font-medium text-green-600">{{ listing.ficheFinanciere.rentabilite }}%</span>
-                </div>
-              </div>
-              <div v-if="listing.ficheFinanciere.conclusion" class="mt-4 p-4 bg-gray-50 rounded-lg">
-                <p class="text-sm text-gray-600">{{ listing.ficheFinanciere.conclusion }}</p>
-              </div>
-            </div>
+            <!-- Financial Analysis (full access only) -->
+            <FicheFinanciere
+              v-if="hasFullAccess && listing.ficheFinanciere"
+              :fiche="listing.ficheFinanciere"
+            />
 
             <!-- Legal analysis (full access only) -->
             <div v-if="hasFullAccess && listing.ficheJuridique" class="bg-white rounded-xl p-6 shadow-sm">

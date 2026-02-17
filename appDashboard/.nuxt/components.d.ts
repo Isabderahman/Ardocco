@@ -17,6 +17,8 @@ type LazyComponent<T> = DefineComponent<HydrationStrategies, {}, {}, {}, {}, {},
 export const AppLogo: typeof import("../app/components/AppLogo.vue").default
 export const CasablancaSettatMap: typeof import("../app/components/CasablancaSettatMap.vue").default
 export const EtudeInvestissement: typeof import("../app/components/EtudeInvestissement.vue").default
+export const EtudeInvestissementCard: typeof import("../app/components/EtudeInvestissementCard.vue").default
+export const FicheFinanciereCard: typeof import("../app/components/FicheFinanciereCard.vue").default
 export const HomeHero: typeof import("../app/components/HomeHero.vue").default
 export const MiniListingMap: typeof import("../app/components/MiniListingMap.vue").default
 export const TemplateMenu: typeof import("../app/components/TemplateMenu.vue").default
@@ -187,6 +189,8 @@ export const NuxtIsland: typeof import("../node_modules/nuxt/dist/app/components
 export const LazyAppLogo: LazyComponent<typeof import("../app/components/AppLogo.vue").default>
 export const LazyCasablancaSettatMap: LazyComponent<typeof import("../app/components/CasablancaSettatMap.vue").default>
 export const LazyEtudeInvestissement: LazyComponent<typeof import("../app/components/EtudeInvestissement.vue").default>
+export const LazyEtudeInvestissementCard: LazyComponent<typeof import("../app/components/EtudeInvestissementCard.vue").default>
+export const LazyFicheFinanciereCard: LazyComponent<typeof import("../app/components/FicheFinanciereCard.vue").default>
 export const LazyHomeHero: LazyComponent<typeof import("../app/components/HomeHero.vue").default>
 export const LazyMiniListingMap: LazyComponent<typeof import("../app/components/MiniListingMap.vue").default>
 export const LazyTemplateMenu: LazyComponent<typeof import("../app/components/TemplateMenu.vue").default>

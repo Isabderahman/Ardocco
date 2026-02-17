@@ -11,7 +11,7 @@ definePageMeta({
 
 const route = useRoute()
 const router = useRouter()
-const { token } = useAuth()
+const { token, ensureUserLoaded } = useAuth()
 const { isAdmin, isAgent } = useAccess()
 const toast = useToast()
 
@@ -491,13 +491,17 @@ function getStatusInfo(status: string | null): { label: string; color: string } 
 }
 
 onMounted(async () => {
+  loading.value = true
+
+  // Ensure user data is loaded first so canEdit has correct values
+  await ensureUserLoaded()
+
   if (!canEdit.value) {
     toast.add({ title: 'Acces non autorise', color: 'error' })
     router.push(`/terrains/${listingId.value}`)
     return
   }
 
-  loading.value = true
   await fetchListing()
   await fetchEtudes()
 
@@ -841,9 +845,9 @@ onMounted(async () => {
         </div>
 
         <!-- Sidebar - Results Preview -->
-        <div class="space-y-6">
+        <div class="lg:sticky lg:top-6 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto space-y-6">
           <!-- Summary Card -->
-          <div class="bg-elevated rounded-xl p-6 sticky top-6">
+          <div class="bg-elevated rounded-xl p-6">
             <h2 class="text-lg font-semibold text-highlighted mb-4">Resultat</h2>
 
             <!-- Ratio Badge -->

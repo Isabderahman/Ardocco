@@ -10,7 +10,7 @@ definePageMeta({
 })
 
 const route = useRoute()
-const { token } = useAuth()
+const { token, ensureUserLoaded } = useAuth()
 const { isAdmin, isAgent, isVendeur } = useAccess()
 const toast = useToast()
 
@@ -147,6 +147,8 @@ function getPhotoUrl(doc: { file_path?: string }): string {
 
 onMounted(async () => {
   loading.value = true
+  // Ensure user data is loaded first so canEditEtude has correct values
+  await ensureUserLoaded()
   await Promise.all([fetchListing(), fetchEtudes()])
   loading.value = false
 })
@@ -259,121 +261,16 @@ onMounted(async () => {
           </div>
 
           <!-- Investment Study -->
-          <div v-if="latestEtude" class="bg-elevated rounded-xl p-6">
-            <div class="flex items-center justify-between mb-4">
-              <h2 class="text-lg font-semibold text-highlighted">Etude d'Investissement</h2>
-              <div class="flex items-center gap-2">
-                <UBadge :color="getEtudeStatusInfo(latestEtude.status).color as any" variant="soft">
-                  {{ getEtudeStatusInfo(latestEtude.status).label }}
-                </UBadge>
-                <UBadge v-if="latestEtude.generated_by_ai" color="info" variant="soft">
-                  <UIcon name="i-lucide-sparkles" class="size-3 mr-1" />
-                  IA
-                </UBadge>
-              </div>
-            </div>
-
-            <!-- Key Metrics -->
-            <div class="grid sm:grid-cols-3 gap-4 mb-6">
-              <div class="bg-default rounded-lg p-4 text-center">
-                <p class="text-xs text-dimmed uppercase tracking-wider mb-1">Ratio Rentabilite</p>
-                <p
-                  class="text-2xl font-bold"
-                  :class="(latestEtude.ratio ?? 0) > 0 ? 'text-success' : 'text-error'"
-                >
-                  {{ formatPercent(latestEtude.ratio) }}
-                </p>
-              </div>
-              <div class="bg-default rounded-lg p-4 text-center">
-                <p class="text-xs text-dimmed uppercase tracking-wider mb-1">Investissement Total</p>
-                <p class="text-xl font-bold text-highlighted">{{ formatPrice(latestEtude.total_investissement) }}</p>
-              </div>
-              <div class="bg-default rounded-lg p-4 text-center">
-                <p class="text-xs text-dimmed uppercase tracking-wider mb-1">Resultat Brute</p>
-                <p
-                  class="text-xl font-bold"
-                  :class="(latestEtude.resultat_brute ?? 0) > 0 ? 'text-success' : 'text-error'"
-                >
-                  {{ formatPrice(latestEtude.resultat_brute) }}
-                </p>
-              </div>
-            </div>
-
-            <!-- Details -->
-            <div class="grid sm:grid-cols-2 gap-6">
-              <div>
-                <h3 class="text-sm font-semibold text-highlighted mb-3">Projet</h3>
-                <div class="space-y-2 text-sm">
-                  <div class="flex justify-between">
-                    <span class="text-muted">Type:</span>
-                    <span class="text-highlighted">{{ latestEtude.type_projet || '-' }}</span>
-                  </div>
-                  <div class="flex justify-between">
-                    <span class="text-muted">Surface plancher:</span>
-                    <span class="text-highlighted">{{ formatArea(latestEtude.surface_plancher_total) }}</span>
-                  </div>
-                  <div class="flex justify-between">
-                    <span class="text-muted">Prix terrain:</span>
-                    <span class="text-highlighted">{{ formatPrice(latestEtude.prix_terrain_total) }}</span>
-                  </div>
-                </div>
-              </div>
-              <div>
-                <h3 class="text-sm font-semibold text-highlighted mb-3">Revenus</h3>
-                <div class="space-y-2 text-sm">
-                  <div class="flex justify-between">
-                    <span class="text-muted">Commerce:</span>
-                    <span class="text-highlighted">{{ formatPrice(latestEtude.revenus_commerce) }}</span>
-                  </div>
-                  <div class="flex justify-between">
-                    <span class="text-muted">Appartements:</span>
-                    <span class="text-highlighted">{{ formatPrice(latestEtude.revenus_appart) }}</span>
-                  </div>
-                  <div class="flex justify-between font-semibold">
-                    <span class="text-muted">Total:</span>
-                    <span class="text-highlighted">{{ formatPrice(latestEtude.total_revenues) }}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- AI Notes -->
-            <div v-if="latestEtude.ai_notes" class="mt-6 p-4 bg-info/10 rounded-lg">
-              <div class="flex items-start gap-2">
-                <UIcon name="i-lucide-lightbulb" class="size-5 text-info shrink-0 mt-0.5" />
-                <div>
-                  <p class="text-sm font-medium text-highlighted mb-1">Recommandations IA</p>
-                  <p class="text-sm text-muted whitespace-pre-line">{{ latestEtude.ai_notes }}</p>
-                </div>
-              </div>
-            </div>
-
-            <!-- PDF Actions -->
-            <div class="mt-6 flex flex-wrap gap-3">
-              <UButton
-                v-if="canGeneratePdf && !latestEtude.pdf_path"
-                label="Generer PDF"
-                color="primary"
-                icon="i-lucide-file-text"
-                :loading="pdfLoading"
-                @click="generatePdf"
-              />
-              <UButton
-                v-if="latestEtude.pdf_path"
-                label="Telecharger PDF"
-                color="success"
-                icon="i-lucide-download"
-                @click="downloadPdf"
-              />
-              <UButton
-                v-if="canEditEtude"
-                label="Modifier l'etude"
-                variant="outline"
-                icon="i-lucide-edit"
-                :to="`/terrains/${listingId}/etude`"
-              />
-            </div>
-          </div>
+          <EtudeInvestissementCard
+            v-if="latestEtude"
+            :etude="latestEtude"
+            :show-actions="true"
+            :can-edit="canEditEtude"
+            :pdf-loading="pdfLoading"
+            @download-pdf="downloadPdf"
+            @generate-pdf="generatePdf"
+            @edit="navigateTo(`/terrains/${listingId}/etude`)"
+          />
 
           <!-- No Etude Yet -->
           <div v-else class="bg-elevated rounded-xl p-6">
@@ -390,6 +287,23 @@ onMounted(async () => {
                 icon="i-lucide-plus"
                 :to="`/terrains/${listingId}/etude`"
               />
+            </div>
+          </div>
+
+          <!-- Financial Analysis -->
+          <FicheFinanciereCard
+            v-if="listing.ficheFinanciere"
+            :fiche="listing.ficheFinanciere"
+          />
+
+          <!-- No Financial Analysis Yet -->
+          <div v-else-if="isAdmin || isAgent" class="bg-elevated rounded-xl p-6">
+            <div class="text-center py-6">
+              <UIcon name="i-lucide-chart-line" class="size-10 text-muted mx-auto mb-3" />
+              <h3 class="text-base font-semibold text-highlighted mb-2">Analyse financiere en attente</h3>
+              <p class="text-sm text-muted">
+                L'analyse financiere sera generee par un expert ou l'IA.
+              </p>
             </div>
           </div>
         </div>
