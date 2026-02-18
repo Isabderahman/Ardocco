@@ -7,7 +7,6 @@ definePageMeta({
 const { login } = useAuth()
 const route = useRoute()
 const config = useRuntimeConfig()
-const requestUrl = useRequestURL()
 
 const state = reactive({
   email: '',
@@ -25,30 +24,29 @@ function safeRedirectPath(value: unknown): string | null {
   return trimmed
 }
 
-function normalizeExternalUrl(value: unknown): string | null {
-  if (typeof value !== 'string') return null
-  const trimmed = value.trim()
-  if (!trimmed) return null
-  if (!/^https?:\/\//i.test(trimmed)) return null
-  return trimmed.replace(/\/+$/, '')
-}
-
 function resolveDashboardBase(): string | null {
-  const host = requestUrl.hostname
+  // Use window.location on client (where redirects happen) for reliable hostname detection
+  const host = import.meta.client ? window.location.hostname : useRequestURL().hostname
 
-  // 1. Production: ardocco.com -> app.ardocco.com (always takes priority)
+  // 1. Production: ardocco.com -> app.ardocco.com
   if (host === 'ardocco.com' || host === 'www.ardocco.com') {
     return 'https://app.ardocco.com'
   }
 
-  // 2. Check explicit config for other environments
-  const external = normalizeExternalUrl(config.public.dashboardUrl)
-  if (external) return external
-
-  // 3. Local development fallback
+  // 2. Local development fallback
   if (host === 'localhost' || host === '127.0.0.1') {
-    const protocol = requestUrl.protocol || 'http:'
+    const protocol = import.meta.client ? window.location.protocol : 'http:'
     return `${protocol}//${host}:8002`
+  }
+
+  // 3. Check explicit config for other environments (staging, etc.)
+  const explicit = config.public.dashboardUrl
+  if (typeof explicit === 'string' && explicit.trim() && /^https?:\/\//i.test(explicit)) {
+    // Ignore config if it points to localhost in non-local environments
+    const configUrl = explicit.trim().replace(/\/+$/, '')
+    if (!configUrl.includes('127.0.0.1') && !configUrl.includes('localhost')) {
+      return configUrl
+    }
   }
 
   return null
