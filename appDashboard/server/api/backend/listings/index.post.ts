@@ -9,6 +9,18 @@ export default defineEventHandler(async (event) => {
 
   const headers: Record<string, string> = { accept: 'application/json' }
 
+  // Forward Content-Type header (critical for multipart/form-data file uploads - includes boundary)
+  const contentType = getHeader(event, 'content-type')
+  if (typeof contentType === 'string' && contentType.length) {
+    headers['content-type'] = contentType
+  }
+
+  // Forward Content-Length header (important for file uploads)
+  const contentLength = getHeader(event, 'content-length')
+  if (typeof contentLength === 'string' && contentLength.length) {
+    headers['content-length'] = contentLength
+  }
+
   const authHeader = getHeader(event, 'authorization')
   const token = getCookie(event, 'auth_token')
   if (typeof authHeader === 'string' && authHeader.length) {

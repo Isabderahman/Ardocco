@@ -133,17 +133,17 @@ const requestUrl = useRequestURL()
 
 // Dashboard app URL (app.ardocco.com)
 const dashboardUrl = computed(() => {
-  // 1. Check explicit config
+  const host = requestUrl.hostname
+
+  // 1. Production: ardocco.com -> app.ardocco.com (always takes priority)
+  if (host === 'ardocco.com' || host === 'www.ardocco.com') {
+    return 'https://app.ardocco.com'
+  }
+
+  // 2. Check explicit config for other environments
   const explicit = config.public.dashboardUrl
   if (typeof explicit === 'string' && explicit.trim() && /^https?:\/\//i.test(explicit)) {
     return explicit.replace(/\/+$/, '')
-  }
-
-  const host = requestUrl.hostname
-
-  // 2. Production: ardocco.com -> app.ardocco.com
-  if (host === 'ardocco.com' || host === 'www.ardocco.com') {
-    return 'https://app.ardocco.com'
   }
 
   // 3. Local development fallback

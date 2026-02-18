@@ -14,17 +14,18 @@ export default defineNuxtRouteMiddleware(async () => {
   }
 
   function resolveDashboardBase(): string | null {
-    const external = normalizeExternalUrl(config.public.dashboardUrl)
-    if (external) return external
-
     const host = requestUrl.hostname
 
-    // Production: ardocco.com -> app.ardocco.com
+    // 1. Production: ardocco.com -> app.ardocco.com (always takes priority)
     if (host === 'ardocco.com' || host === 'www.ardocco.com') {
       return 'https://app.ardocco.com'
     }
 
-    // Local development fallback
+    // 2. Check explicit config for other environments
+    const external = normalizeExternalUrl(config.public.dashboardUrl)
+    if (external) return external
+
+    // 3. Local development fallback
     if (host === 'localhost' || host === '127.0.0.1') {
       const protocol = requestUrl.protocol || 'http:'
       return `${protocol}//${host}:8002`
